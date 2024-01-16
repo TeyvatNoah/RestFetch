@@ -1,0 +1,47 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build:RestFetch",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/RestFetch/RestFetch.csproj",
+				"-c",
+				"Debug",
+				"-p:Arch=x64",
+				"-p:RID=win-x64"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build:QueryString",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/RestFetch.QueryString/RestFetch.QueryString.csproj",
+				"-c",
+				"Debug",
+				"-p:Arch=x64",
+				"-p:RID=win-x64"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build:SourceGenerator",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/RestFetch.SourceGenerator/RestFetch.SourceGenerator.csproj",
+				"-c",
+				"Debug",
+				"-p:Arch=x64",
+				"-p:RID=win-x64"
+			],
+			"problemMatcher": "$msCompile"
+		},
+	]
+}
