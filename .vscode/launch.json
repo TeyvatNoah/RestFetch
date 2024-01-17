@@ -16,6 +16,8 @@
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
 			"stopAtEntry": false,
+			"justMyCode": false,
+			"suppressJITOptimizations": true,
 			"env": {
 				"HTTP_PROXY": "http://127.0.0.1:2333",
 				"HTTPS_PROXY": "http://127.0.0.1:2333",
@@ -33,6 +35,8 @@
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
 			"stopAtEntry": false,
+			"justMyCode": false,
+			"suppressJITOptimizations": true,
 			"env": {
 				"HTTP_PROXY": "http://127.0.0.1:2333",
 				"HTTPS_PROXY": "http://127.0.0.1:2333",
@@ -50,6 +54,8 @@
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
 			"stopAtEntry": false,
+			"justMyCode": false,
+			"suppressJITOptimizations": true,
 			"env": {
 				"HTTP_PROXY": "http://127.0.0.1:2333",
 				"HTTPS_PROXY": "http://127.0.0.1:2333",
