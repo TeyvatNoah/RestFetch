@@ -1,0 +1,6 @@
+BenchmarkDotNet
+ZString
+SixTatami.Utilities
+Microsoft.AspNetCore.Http
+Microsoft.AspNetCore.Http.Extensions
+Microsoft.AspNetCore.WebUtilities

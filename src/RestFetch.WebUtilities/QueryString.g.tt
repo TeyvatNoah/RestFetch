@@ -1,0 +1,240 @@
+<#@ template language="C#" #>
+<#@ output extension=".cs" #>
+<#
+	string[] primitiveTypes = { "string", "sbyte", "short", "int", "long", "byte", "ushort", "uint", "ulong", "float", "double", "decimal", "bool" };
+	string[] primitiveNumericTypes = { "sbyte", "short", "int", "long", "byte", "ushort", "uint", "ulong", "float", "double", "decimal" };
+#>
+#nullable enable
+
+using System.Globalization;
+using System.Runtime.CompilerServices;
+
+using Cysharp.Text;
+
+namespace RestFetch.WebUtilities;
+
+
+public partial class QueryString<TEncoder, TDecoder>:
+	// for well known key-value collection
+<# foreach (var type in primitiveTypes) { #>
+	IQueryStringSerializer<<#= type #>>,
+	IAliasQueryStringSerializer<<#= type #>>,
+<# if (type != "string") { #>
+	IQueryStringSerializer<<#= type #>?>,
+	IAliasQueryStringSerializer<<#= type #>?>,
+<# } #>
+<# if (type == "string") {#>
+	IAliasQueryStringSerializer<IEnumerable<<#= type #>>>,
+<# } else if (type != "sbyte" && type != "byte") {#>
+	IAliasQueryStringSerializer<IEnumerable<<#= type #>>>,
+	IAliasQueryStringSerializer<IEnumerable<<#= type #>?>>,
+<# } #>
+<# if (type == "string") {#>
+	IAliasQueryStringSerializer<<#= type #>?[]>,
+<# } else if (type != "sbyte" && type != "byte") {#>
+	IAliasQueryStringSerializer<<#= type #>[]>,
+	IAliasQueryStringSerializer<<#= type #>?[]>,
+<# } #>
+<# if (type == "string") {#>
+	IQueryStringSerializer<IEnumerable<KeyValuePair<string, <#= type #>?>>>,
+	IAliasQueryStringSerializer<IEnumerable<KeyValuePair<string, <#= type #>?>>>,
+<# } else {#>
+	IQueryStringSerializer<IEnumerable<KeyValuePair<string, <#= type #>>>>,
+	IQueryStringSerializer<IEnumerable<KeyValuePair<string, <#= type #>?>>>,
+	IAliasQueryStringSerializer<IEnumerable<KeyValuePair<string, <#= type #>>>>,
+	IAliasQueryStringSerializer<IEnumerable<KeyValuePair<string, <#= type #>?>>>,
+<# } #>
+<# } #>
+	// for self
+	ICollection<KeyValuePair<string, string>>
+	{
+<# foreach (var type in primitiveNumericTypes) { #>
+
+	// <#= type #>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(<#= type #> value) => value.ToString(CultureInfo.InvariantCulture);
+
+	// <#= type #>?
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(<#= type #>? value) => value is <#= type #> v ? v.ToString(CultureInfo.InvariantCulture) : "";
+<# } #>
+<# foreach (var type in primitiveNumericTypes) { #>
+
+	// <#= type #>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(string aliasKey, <#= type #> value) => ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, Serialize(value));
+
+	// <#= type #>?
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(string aliasKey, <#= type #>? value) => value is <#= type #> v ? ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, v) : "";
+<# } #>
+<# foreach (var type in primitiveNumericTypes) { #>
+
+	// <#= type #>[]
+	public static string Serialize(string aliasKey, <#= type #>[] array) {
+		using var sb = ZString.CreateStringBuilder(true);
+
+		if (array.Length > 0) {
+			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
+			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, array[0]));
+			sb.Append(encodedKey);
+			sb.Append(Eq);
+			sb.Append(array[0]);
+			for (var i = 1; i < array.Length; ++i) {
+				// sb.Append(ZString.Concat(Separator, TEncoder.EncodeURIComponent(aliasKey), Eq, array[i]));
+				sb.Append(Separator);
+				sb.Append(encodedKey);
+				sb.Append(Eq);
+				sb.Append(array[i]);
+			}
+		} else {
+			return "";
+		}
+
+		return sb.ToString();
+	}
+
+	// <#= type #>?[]
+	public static string Serialize(string aliasKey, <#= type #>?[] array) {
+		using var sb = ZString.CreateStringBuilder(true);
+
+		if (array.Length > 0) {
+			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
+
+			if (array[0] is <#= type #> v) {
+				// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, v));
+				sb.Append(encodedKey);
+				sb.Append(Eq);
+				sb.Append(v);
+			}
+			for (var i = 1; i < array.Length; ++i) {
+				if (array[i] is <#= type #> vv) {
+					// sb.Append(ZString.Concat(Separator, TEncoder.EncodeURIComponent(aliasKey), Eq, vv));
+					sb.Append(Separator);
+					sb.Append(encodedKey);
+					sb.Append(Eq);
+					sb.Append(vv);
+				}
+			}
+		} else {
+			return "";
+		}
+
+		return sb.ToString();
+	}
+<# } #>
+<# foreach (var type in primitiveNumericTypes) { #>
+
+	// IEnumerable<<#= type #>>
+	public static string Serialize(string aliasKey, IEnumerable<<#= type #>> collection) {
+		using var sb = ZString.CreateStringBuilder(true);
+		using var iterator = collection.GetEnumerator();
+
+		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
+
+		if (iterator.MoveNext()) {
+			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, iterator.Current));
+			sb.Append(encodedKey);
+			sb.Append(Eq);
+			sb.Append(iterator.Current);
+		}
+
+		while (iterator.MoveNext()) {
+			// sb.Append(ZString.Concat(Separator, TEncoder.EncodeURIComponent(aliasKey), Eq, iterator.Current));
+			sb.Append(Separator);
+			sb.Append(encodedKey);
+			sb.Append(Eq);
+			sb.Append(iterator.Current);
+		}
+
+		return sb.ToString();
+	}
+
+	// IEnumerable<<#= type #>?>
+	public static string Serialize(string aliasKey, IEnumerable<<#= type #>?> collection) {
+		using var sb = ZString.CreateStringBuilder(true);
+		using var iterator = collection.GetEnumerator();
+
+		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
+
+		if (iterator.MoveNext() && iterator.Current is <#= type #> v) {
+			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, v));
+			sb.Append(encodedKey);
+			sb.Append(Eq);
+			sb.Append(v);
+		}
+
+		while (iterator.MoveNext()) {
+			if (iterator.Current is <#= type #> vv) {
+				// sb.Append(ZString.Concat(Separator, TEncoder.EncodeURIComponent(aliasKey), Eq, vv));
+				sb.Append(Separator);
+				sb.Append(encodedKey);
+				sb.Append(Eq);
+				sb.Append(vv);
+			}
+		}
+
+		return sb.ToString();
+	}
+<# } #>
+<# foreach (var type in primitiveNumericTypes) { #>
+
+	// IEnumerable<KeyValuePair<string, <#= type #>>>
+	public static string Serialize(IEnumerable<KeyValuePair<string, <#= type #>>> collection) {
+		using var sb = ZString.CreateStringBuilder(true);
+		using var iterator = collection.GetEnumerator();
+
+		var (key, value) = iterator.Current;
+		if (iterator.MoveNext()) {
+			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			sb.Append(TEncoder.EncodeURIComponent(key));
+			sb.Append(Eq);
+			sb.Append(value);
+		}
+
+		while (iterator.MoveNext()) {
+			var (innerKey, innerValue) = iterator.Current;
+			// sb.Append(ZString.Concat(Separator, TEncoder.EncodeURIComponent(innerKey), Eq, innerValue));
+			sb.Append(Separator);
+			sb.Append(TEncoder.EncodeURIComponent(innerKey));
+			sb.Append(Eq);
+			sb.Append(innerValue);
+		}
+
+		return sb.ToString();
+	}
+
+	// IEnumerable<KeyValuePair<string, <#= type #>?>>
+	public static string Serialize(IEnumerable<KeyValuePair<string, <#= type #>?>> collection) {
+		using var sb = ZString.CreateStringBuilder(true);
+		using var iterator = collection.GetEnumerator();
+
+		if (iterator.MoveNext() && iterator.Current.Value is <#= type #> v) {
+			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(iterator.Current.Key), Eq, v));
+			sb.Append(TEncoder.EncodeURIComponent(iterator.Current.Key));
+			sb.Append(Eq);
+			sb.Append(v);
+		}
+
+		while (iterator.MoveNext()) {
+			if (iterator.Current.Value is <#= type #> vv) {
+				// sb.Append(ZString.Concat(Separator, TEncoder.EncodeURIComponent(iterator.Current.Key), Eq, vv));
+				sb.Append(Separator);
+				sb.Append(TEncoder.EncodeURIComponent(iterator.Current.Key));
+				sb.Append(Eq);
+				sb.Append(vv);
+			}
+		}
+
+		return sb.ToString();
+	}
+
+	// IEnumerable<KeyValuePair<string, <#= type #>>>/IEnumerable<KeyValuePair<string, <#= type #>>>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(string _, IEnumerable<KeyValuePair<string, <#= type #>>> collection) => Serialize(collection);
+
+	// IEnumerable<KeyValuePair<string, <#= type #>?>>/IEnumerable<KeyValuePair<string, <#= type #>?>>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(string _, IEnumerable<KeyValuePair<string, <#= type #>?>> collection) => Serialize(collection);
+<# } #>
+}

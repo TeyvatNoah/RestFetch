@@ -1,0 +1,10 @@
+source https://api.nuget.org/v3/index.json
+
+storage: none
+nuget BenchmarkDotNet
+nuget Microsoft.AspNetCore.Http
+nuget Microsoft.AspNetCore.Http.Extensions
+nuget Microsoft.CodeAnalysis.CSharp
+nuget SixTatami.Utilities
+nuget T4.BuildTools
+nuget ZString

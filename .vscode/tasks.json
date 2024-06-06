@@ -2,30 +2,26 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "build:RestFetch",
+			"label": "build:Core",
 			"command": "dotnet",
 			"type": "process",
 			"args": [
 				"build",
-				"${workspaceFolder}/src/RestFetch/RestFetch.csproj",
+				"${workspaceFolder}/src/RestFetch.Core/RestFetch.Core.csproj",
 				"-c",
 				"Debug",
-				"-p:Arch=x64",
-				"-p:RID=win-x64"
 			],
 			"problemMatcher": "$msCompile"
 		},
 		{
-			"label": "build:QueryString",
+			"label": "build:WebUtilities",
 			"command": "dotnet",
 			"type": "process",
 			"args": [
 				"build",
-				"${workspaceFolder}/src/RestFetch.QueryString/RestFetch.QueryString.csproj",
+				"${workspaceFolder}/src/RestFetch.WebUtilities/RestFetch.WebUtilities.csproj",
 				"-c",
 				"Debug",
-				"-p:Arch=x64",
-				"-p:RID=win-x64"
 			],
 			"problemMatcher": "$msCompile"
 		},
@@ -38,8 +34,54 @@
 				"${workspaceFolder}/src/RestFetch.SourceGenerator/RestFetch.SourceGenerator.csproj",
 				"-c",
 				"Debug",
-				"-p:Arch=x64",
-				"-p:RID=win-x64"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build:Benchmark",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/Benchmark/Benchmark.csproj",
+				"-c",
+				"Debug",
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build:Tests",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/Tests/Tests.csproj",
+				"-c",
+				"Debug",
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build:Examples",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/Examples/Examples.csproj",
+				"-c",
+				"Debug",
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build:Common",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/Common/Common.csproj",
+				"-c",
+				"Debug",
 			],
 			"problemMatcher": "$msCompile"
 		},

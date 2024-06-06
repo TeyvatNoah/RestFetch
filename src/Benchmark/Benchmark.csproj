@@ -3,27 +3,16 @@
 	<!-- 通用配置 -->
 	<PropertyGroup>
 		<!-- 包信息 -->
-		<PackageId>RestFetch.SourceGenerator</PackageId>
-		<PackageVersion>0.1.0</PackageVersion>
-		<!-- <PackageIcon>TODO</PackageIcon> -->
-		<PackageTags>RestFetch</PackageTags>
-		<Title>RestFetch.SourceGenerator</Title>
+		<Version>0.1.0</Version>
 		<Authors>al0rid4l</Authors>
 		<Company>com.al0rid4l</Company>
 		<RepositoryUrl>https://github.com/al0rid4l/RestFetch</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/al0rid4l/RestFetch</PackageProjectUrl>
-		<Description>RestFetch SourceGenerator</Description>
-		<IncludeSymbols>true</IncludeSymbols>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-
-		<!-- 启用包验证 -->
-		<EnablePackageValidation>true</EnablePackageValidation>
-
+		
 		<!-- output target -->
-		<TargetFramework>netstandard2.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<!-- <TargetFrameworks>net8.0;netstandard2.1;</TargetFrameworks> -->
-		<OutputType>Library</OutputType>
+		<OutputType>Exe</OutputType>
 		<!-- 输出exe文件名 -->
 	  <!-- <AssemblyName>$(Exefile)</AssemblyName> -->
 		<!-- 输出目录 -->
@@ -44,9 +33,9 @@
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
 		<AnalysisMode>Recommended</AnalysisMode>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-    <NoWarn>CA1051,CA1725,CA2211,CA1710,RCS1158,CA1000</NoWarn>
+    <NoWarn>CA1051,CA1725,CA2211,CA1710,RCS1158,CA1000,CA1822</NoWarn>
 		<!-- for source generator -->
-		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<!-- <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild> -->
 
     <!-- T4模板 -->
     <!-- <TransformOnBuild>True</TransformOnBuild>
@@ -102,15 +91,15 @@
 
 		<!-- 生成调试信息 -->
 		<!-- 调试符号 -->
-		<DebugSymbols>true</DebugSymbols>
+		<DebugSymbols>false</DebugSymbols>
 		<!-- 生成跨平台pdb -->
-		<DebugType>portable</DebugType>
+		<!-- <DebugType>portable</DebugType> -->
 		<!-- pdb文件位置和名称 -->
 		<!-- <PdbFile>$(Exefile)</PdbFile> -->
 		<!-- 将pdb打包到发布内容和主包一起发布 -->
 		<!-- <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder> -->
 		<!-- 将pdb打包到发布内容作为符号包单独发布 -->
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<!-- <SymbolPackageFormat>snupkg</SymbolPackageFormat> -->
 		<!-- 优化 -->
 		<Optimize>true</Optimize>
 
@@ -128,7 +117,7 @@
 		<OptimizationPreference>speed</OptimizationPreference>
 		<EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
 		<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault> -->
- 		<IsAotCompatible>true</IsAotCompatible>
+ 		<!-- <IsAotCompatible>true</IsAotCompatible> -->
 
 		<!-- JIT & PGO -->
 		<!-- <TieredPGO>true</TieredPGO>
@@ -149,7 +138,7 @@
 		<DebuggerSupport>false</DebuggerSupport> -->
 		<!-- 裁剪分析 -->
 		<!-- <EnableTrimAnalyzer>true</EnableTrimAnalyzer> -->
-		<IsTrimmable>true</IsTrimmable>
+		<!-- <IsTrimmable>true</IsTrimmable> -->
 
 		<!-- runtime -->
 		<!-- GC -->
@@ -180,9 +169,12 @@
 	<!-- <ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
 	</ItemGroup> -->
-	<ItemGroup>
+	<!-- <ItemGroup>
 		<None Include="README.md" Pack="true" PackagePath="\"/>
 		<None Include="LICENSE" Pack="true" PackagePath="\"/>
+	</ItemGroup> -->
+	<ItemGroup>
+		<ProjectReference Include="../RestFetch.WebUtilities/RestFetch.WebUtilities.csproj"></ProjectReference>
 	</ItemGroup>
 	<Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

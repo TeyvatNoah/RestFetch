@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CI: true
+        
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/paket.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+            
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x'
+          # 如果直接用nuget+lock文件则可以使用以下配置而不用cache action
+          # cache: true
+
+      - name: Install Paket
+        run: dotnet tool install -g paket
+
+      - name: Install Dependencies
+        run: paket install
+        # 如果使用nuget+lock则使用以下命令
+        # run: dotnet restore --locked-mode
+
+      # - name: Run lint
+      #   run: TODO
+      - name: Filter Path
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            WebUtilities:
+              - 'src/RestFetch.WebUtilities/**'
+            Core:
+              - 'src/RestFetch.Core/**'
+
+      - name: Build WebUtilities
+        if: steps.changes.outputs.WebUtilities == 'true'
+        run: ./build.sh -z 1 -c src/RestFetch.WebUtilities/RestFetch.WebUtilities.csproj
+
+      - name: Pack WebUtilities
+        if: steps.changes.outputs.WebUtilities == 'true'
+        run: dotnet pack src/RestFetch.WebUtilities/RestFetch.WebUtilities.csproj --include-symbols -c Release
+
+      - name: Publish WebUtilities
+        if: steps.changes.outputs.WebUtilities == 'true'
+        run: dotnet nuget push src/RestFetch.WebUtilities/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+
+  # release:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+
+  #     - name: Use Cache
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: ~/.nuget/packages
+  #         key: ${{ runner.os }}-nuget-${{ hashFiles('**/paket.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-nuget-
+            
+  #     - name: Install .NET
+  #       uses: actions/setup-dotnet@v4
+  #       with:
+  #         dotnet-version: '8.x'
+  #         # 如果直接用nuget+lock文件则可以使用以下配置而不用cache action
+  #         # cache: true
+
+  #     - name: Install Paket
+  #       run: dotnet tool install -g paket
+
+  #     - name: Install Dependencies
+  #       run: paket install
+  #       # 如果使用nuget+lock则使用以下命令
+  #       # run: dotnet restore --locked-mode
+
+  #     # - name: Run lint
+  #     #   run: TODO
+  #     - name: Filter Path
+  #       uses: dorny/paths-filter@v3
+  #       id: changes
+  #       with:
+  #         filters: |
+  #           TODO:
+  #             - 'src/TODO/**'
+  #           Datastructures:
+  #             - 'src/Datastructures/**'
+
+  #     - name: Build TODO
+  #       if: steps.changes.outputs.TODO == 'true'
+  #       shell: pwsh
+  #       run: ./build.ps1 -z -c src/TODO/TODO.csproj
+
+  #     - name: Pack TODO
+  #       if: steps.changes.outputs.TODO == 'true'
+  #       shell: pwsh
+  #       run: dotnet pack src/TODO/TODO.csproj --include-symbols -c Release
+
+  #     - name: Publish TODO
+  #       if: steps.changes.outputs.TODO == 'true'
+  #       shell: pwsh
+  #       run: Get-Item src/TODO/bin/Release/*.nupkg | % { dotnet nuget push $_.FullName -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json }

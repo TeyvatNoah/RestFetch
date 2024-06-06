@@ -1,0 +1,254 @@
+<#@ template language="C#" #>
+<#@ output extension=".cs" #>
+<#
+	string[] primitiveNumericTypes = { "short", "int", "long", "ushort", "uint", "ulong", "float", "double", "decimal" };
+#>
+namespace RestFetch.WebUtilities;
+
+public partial struct FastQueryString {
+<# foreach (var type in primitiveNumericTypes) { #>
+	public void Add(string key, <#= type #> value) {
+		if (!_isFirst) {
+	 		_builder.Append('&');		
+		} else {
+			_isFirst = false;
+		}
+		
+		_builder.Append(URLHelper.EncodeURIComponent(key));
+		_builder.Append('=');
+		_builder.Append(value);
+	}
+	
+	public void Add(KeyValuePair<string, <#= type #>> kv) {
+		var (key, value) = kv;
+		
+		if (!_isFirst) {
+	 		_builder.Append('&');		
+		} else {
+			_isFirst = false;
+		}
+		
+		_builder.Append(URLHelper.EncodeURIComponent(key));
+		_builder.Append('=');
+		_builder.Append(value);
+	}
+	
+	public void Add(IEnumerable<KeyValuePair<string, <#= type #>>> kvPairs) {
+		foreach (var (key, value) in kvPairs) {
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(URLHelper.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append(value);
+		}
+		_isFirst = false;
+	}
+
+	public void Add(string key, <#= type #>[] values) {
+		for (var i = 0; i < values.Length; ++i) {
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(URLHelper.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append(values[i]);
+		}
+		_isFirst = false;
+		
+	}
+
+	public void Add(string key, IEnumerable<<#= type #>> values) {
+		foreach (var value in values) {
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(URLHelper.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append(value);
+		}
+		_isFirst = false;
+	}
+	
+	public void Add(string key, <#= type #>? value) {
+		if (value is null) return;
+		if (!_isFirst) {
+	 		_builder.Append('&');		
+		} else {
+			_isFirst = false;
+		}
+		
+		_builder.Append(URLHelper.EncodeURIComponent(key));
+		_builder.Append('=');
+		_builder.Append((<#= type #>)value);
+	}
+	
+	public void Add(KeyValuePair<string, <#= type #>?> kv) {
+		var (key, value) = kv;
+		
+		if (value is null) return;
+		if (!_isFirst) {
+	 		_builder.Append('&');		
+		} else {
+			_isFirst = false;
+		}
+		
+		_builder.Append(URLHelper.EncodeURIComponent(key));
+		_builder.Append('=');
+		_builder.Append((<#= type #>)value);
+	}
+	
+	public void Add(IEnumerable<KeyValuePair<string, <#= type #>?>> kvPairs) {
+		foreach (var (key, value) in kvPairs) {
+			if (value is null) continue;
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(URLHelper.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append((<#= type #>)value);
+		}
+		_isFirst = false;
+	}
+
+	public void Add(string key, <#= type #>?[] values) {
+		for (var i = 0; i < values.Length; ++i) {
+			if (values[i] is null) continue;
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(URLHelper.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append((<#= type #>)values[i]!);
+		}
+		_isFirst = false;
+		
+	}
+
+	public void Add(string key, IEnumerable<<#= type #>?> values) {
+		foreach (var value in values) {
+			if (value is null) continue;
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(URLHelper.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append((<#= type #>)value);
+		}
+		_isFirst = false;
+	}
+
+<# } #>
+}
+
+public partial struct FastQueryString<TEncoder> {
+<# foreach (var type in primitiveNumericTypes) { #>
+	public void Add(string key, <#= type #> value) {
+		if (!_isFirst) {
+	 		_builder.Append('&');		
+		} else {
+			_isFirst = false;
+		}
+		
+		_builder.Append(TEncoder.EncodeURIComponent(key));
+		_builder.Append('=');
+		_builder.Append(value);
+	}
+	
+	public void Add(KeyValuePair<string, <#= type #>> kv) {
+		var (key, value) = kv;
+		
+		if (!_isFirst) {
+	 		_builder.Append('&');		
+		} else {
+			_isFirst = false;
+		}
+		
+		_builder.Append(TEncoder.EncodeURIComponent(key));
+		_builder.Append('=');
+		_builder.Append(value);
+	}
+	
+	public void Add(IEnumerable<KeyValuePair<string, <#= type #>>> kvPairs) {
+		foreach (var (key, value) in kvPairs) {
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(TEncoder.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append(value);
+		}
+		_isFirst = false;
+	}
+
+	public void Add(string key, <#= type #>[] values) {
+		for (var i = 0; i < values.Length; ++i) {
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(TEncoder.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append(values[i]);
+		}
+		_isFirst = false;
+		
+	}
+
+	public void Add(string key, IEnumerable<<#= type #>> values) {
+		foreach (var value in values) {
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(TEncoder.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append(value);
+		}
+		_isFirst = false;
+	}
+	
+	public void Add(string key, <#= type #>? value) {
+		if (value is null) return;
+		if (!_isFirst) {
+	 		_builder.Append('&');		
+		} else {
+			_isFirst = false;
+		}
+		
+		_builder.Append(TEncoder.EncodeURIComponent(key));
+		_builder.Append('=');
+		_builder.Append((<#= type #>)value);
+	}
+	
+	public void Add(KeyValuePair<string, <#= type #>?> kv) {
+		var (key, value) = kv;
+		
+		if (value is null) return;
+		if (!_isFirst) {
+	 		_builder.Append('&');		
+		} else {
+			_isFirst = false;
+		}
+		
+		_builder.Append(TEncoder.EncodeURIComponent(key));
+		_builder.Append('=');
+		_builder.Append((<#= type #>)value);
+	}
+	
+	public void Add(IEnumerable<KeyValuePair<string, <#= type #>?>> kvPairs) {
+		foreach (var (key, value) in kvPairs) {
+			if (value is null) continue;
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(TEncoder.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append((<#= type #>)value);
+		}
+		_isFirst = false;
+	}
+
+	public void Add(string key, <#= type #>?[] values) {
+		for (var i = 0; i < values.Length; ++i) {
+			if (values[i] is null) continue;
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(TEncoder.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append((<#= type #>)values[i]!);
+		}
+		_isFirst = false;
+		
+	}
+
+	public void Add(string key, IEnumerable<<#= type #>?> values) {
+		foreach (var value in values) {
+			if (value is null) continue;
+			if (!_isFirst) _builder.Append('&');
+			_builder.Append(TEncoder.EncodeURIComponent(key));
+			_builder.Append('=');
+			_builder.Append((<#= type #>)value);
+		}
+		_isFirst = false;
+	}
+
+<# } #>
+}
