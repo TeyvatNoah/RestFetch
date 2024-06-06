@@ -1,2 +1,2 @@
-T4.BuildTools copy_local: false
+T4.BuildTools copy_local: true
 ZString
