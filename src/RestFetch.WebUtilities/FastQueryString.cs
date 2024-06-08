@@ -12,7 +12,7 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 
 	public string FalseValue { get; init; } = "false";
 	
-	private Utf16ValueStringBuilder _builder = ZString.CreateStringBuilder(true);
+	private Utf16ValueStringBuilder _builder = ZString.CreateStringBuilder();
 
 	private bool _isFirst = true;
 
@@ -383,7 +383,7 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 
 	public string FalseValue { get; init; } = "false";
 	
-	private Utf16ValueStringBuilder _builder = ZString.CreateStringBuilder(true);
+	private Utf16ValueStringBuilder _builder = ZString.CreateStringBuilder();
 
 	private bool _isFirst = true;
 

@@ -72,7 +72,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// <#= type #>[]
 	public static string Serialize(string aliasKey, <#= type #>[] array) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 
 		if (array.Length > 0) {
 			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -96,7 +96,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// <#= type #>?[]
 	public static string Serialize(string aliasKey, <#= type #>?[] array) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 
 		if (array.Length > 0) {
 			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -127,7 +127,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<<#= type #>>
 	public static string Serialize(string aliasKey, IEnumerable<<#= type #>> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -152,7 +152,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<<#= type #>?>
 	public static string Serialize(string aliasKey, IEnumerable<<#= type #>?> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -181,7 +181,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<KeyValuePair<string, <#= type #>>>
 	public static string Serialize(IEnumerable<KeyValuePair<string, <#= type #>>> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		var (key, value) = iterator.Current;
@@ -206,7 +206,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<KeyValuePair<string, <#= type #>?>>
 	public static string Serialize(IEnumerable<KeyValuePair<string, <#= type #>?>> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		if (iterator.MoveNext() && iterator.Current.Value is <#= type #> v) {

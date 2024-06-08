@@ -156,7 +156,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 		if (qs is null) {
 			return "";
 		} else {
-			using var sb = ZString.CreateStringBuilder(true);
+			using var sb = ZString.CreateStringBuilder();
 
 			var iter = qs.GetEnumerator();
 
@@ -192,7 +192,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<KeyValuePair<string, string?>>/IEnumerable<KeyValuePair<string, string>>
 	public static string Serialize(IEnumerable<KeyValuePair<string, string?>> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		var (key, value) = iterator.Current;
@@ -226,7 +226,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<string?>/IEnumerable<string>
 	public static string Serialize(string aliasKey, IEnumerable<string?> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		var current = iterator.Current;
@@ -254,7 +254,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// string[]/string?[]
 	public static string Serialize(string aliasKey, string?[] array) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 
 		if (array.Length > 0) {
 			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -297,7 +297,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// bool[]
 	public static string Serialize(string aliasKey, bool[] array) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 
 		if (array.Length > 0) {
 			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -321,7 +321,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// bool?[]
 	public static string Serialize(string aliasKey, bool?[] array) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 
 		if (array.Length > 0) {
 			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -351,7 +351,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<bool>
 	public static string Serialize(string aliasKey, IEnumerable<bool> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -376,7 +376,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<bool?>
 	public static string Serialize(string aliasKey, IEnumerable<bool?> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -403,7 +403,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<KeyValuePair<string, bool>>
 	public static string Serialize(IEnumerable<KeyValuePair<string, bool>> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		var (key, value) = iterator.Current;
@@ -430,7 +430,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<KeyValuePair<string, bool?>>
 	public static string Serialize(IEnumerable<KeyValuePair<string, bool?>> collection) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 		using var iterator = collection.GetEnumerator();
 
 		if (iterator.MoveNext() && iterator.Current.Value is bool v) {
@@ -595,7 +595,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 	// private static string SerializeNumeric<N>(string? aliasKey, N v) where N: struct => v is N ? ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, v.ToString(CultureInfo.InvariantCulture)) : "";
 
 	protected static string UnescapeSerialize(QueryString<TEncoder, TDecoder> qs) {
-		using var sb = ZString.CreateStringBuilder(true);
+		using var sb = ZString.CreateStringBuilder();
 
 		var iter = qs.GetEnumerator();
 
