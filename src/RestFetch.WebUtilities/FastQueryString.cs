@@ -6,12 +6,16 @@ using Cysharp.Text;
 namespace RestFetch.WebUtilities;
 
 #pragma warning disable CA1010,CS0659,CA2231 // Generic interface should also be implemented
-public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, IEnumerable, IDisposable {
+public ref partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, IEquatable<FastQueryString>, IDisposable {
 #pragma warning restore CA1010,CS0659,CA2231 // Generic interface should also be implemented
-	public string TrueValue { get; init; } = "true";
+	const string TRUE = "1";
 
-	public string FalseValue { get; init; } = "false";
-	
+	const string FALSE = "0";
+
+	public string TrueValue = TRUE;
+
+	public string FalseValue = FALSE;
+
 	private Utf16ValueStringBuilder _builder = ZString.CreateStringBuilder();
 
 	private bool _isFirst = true;
@@ -24,35 +28,35 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 		_builder.Append(str);
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, string? value) {
 		if (string.IsNullOrEmpty(value)) return;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(URLHelper.EncodeURIComponent(value));
 	}
-	
+
 	public void Add(KeyValuePair<string, string> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(URLHelper.EncodeURIComponent(value));
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, string>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -85,30 +89,30 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 
 	public void Add(string key, bool value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value ? TrueValue : FalseValue);
 	}
-	
+
 	public void Add(KeyValuePair<string, bool> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value ? TrueValue : FalseValue);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, bool>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -127,7 +131,7 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 			_builder.Append(values[i] ? TrueValue : FalseValue);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<bool> values) {
@@ -139,35 +143,35 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, bool? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((bool)value ? TrueValue : FalseValue);
 	}
-	
+
 	public void Add(KeyValuePair<string, bool?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((bool)value ? TrueValue : FalseValue);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, bool?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -188,7 +192,7 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 			_builder.Append((bool)values[i]! ? TrueValue : FalseValue);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<bool?> values) {
@@ -201,33 +205,33 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, sbyte value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, sbyte> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, sbyte>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -241,31 +245,31 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 	public void Add(string key, sbyte? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((sbyte)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, sbyte?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((sbyte)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, sbyte?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -280,30 +284,30 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 
 	public void Add(string key, byte value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, byte> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, byte>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -317,31 +321,31 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 	public void Add(string key, byte? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((byte)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, byte?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((byte)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, byte?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -363,26 +367,34 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Dispose() => _builder.Dispose();
 
-	// public readonly override bool Equals(object? obj) => false;
-
-	// public static bool operator !=(FastQueryString left, FastQueryString right) => false;
-
 	// public override int GetHashCode() => throw new NotImplementedException();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string Serialize(FastQueryString qs) => qs.ToString();
 
-	readonly IEnumerator IEnumerable.GetEnumerator() => throw new NotImplementedException();
+	public override int GetHashCode() => ToString().GetHashCode();
+
+	public readonly override bool Equals(object? obj) => false;
+
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public readonly bool Equals(FastQueryString other) => this == other;
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool operator !=(FastQueryString left, FastQueryString right) => left.ToString() != right.ToString();
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool operator ==(FastQueryString left, FastQueryString right) => left.ToString() == right.ToString();
 }
 
 #pragma warning disable CA1010,CS0659,CA2231 // Generic interface should also be implemented
-public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQueryString>, IEnumerable, IDisposable
+public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQueryString>, IEquatable<FastQueryString<TEncoder>>, IDisposable
 	where TEncoder: IURLEncoder {
 #pragma warning restore CA1010,CS0659,CA2231 // Generic interface should also be implemented
 	public string TrueValue { get; init; } = "true";
 
 	public string FalseValue { get; init; } = "false";
-	
+
 	private Utf16ValueStringBuilder _builder = ZString.CreateStringBuilder();
 
 	private bool _isFirst = true;
@@ -395,35 +407,35 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 		_builder.Append(str);
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, string? value) {
 		if (string.IsNullOrEmpty(value)) return;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(TEncoder.EncodeURIComponent(value));
 	}
-	
+
 	public void Add(KeyValuePair<string, string> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(TEncoder.EncodeURIComponent(value));
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, string>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -456,30 +468,30 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 
 	public void Add(string key, bool value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value ? TrueValue : FalseValue);
 	}
-	
+
 	public void Add(KeyValuePair<string, bool> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value ? TrueValue : FalseValue);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, bool>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -498,7 +510,7 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 			_builder.Append(values[i] ? TrueValue : FalseValue);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<bool> values) {
@@ -510,35 +522,35 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, bool? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((bool)value ? TrueValue : FalseValue);
 	}
-	
+
 	public void Add(KeyValuePair<string, bool?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((bool)value ? TrueValue : FalseValue);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, bool?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -559,7 +571,7 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 			_builder.Append((bool)values[i]! ? TrueValue : FalseValue);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<bool?> values) {
@@ -572,33 +584,33 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, sbyte value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, sbyte> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, sbyte>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -612,31 +624,31 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 	public void Add(string key, sbyte? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((sbyte)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, sbyte?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((sbyte)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, sbyte?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -651,30 +663,30 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 
 	public void Add(string key, byte value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, byte> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, byte>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -688,31 +700,31 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 	public void Add(string key, byte? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((byte)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, byte?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((byte)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, byte?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -723,7 +735,7 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 		}
 		_isFirst = false;
 	}
-	
+
 
 	// 不要readonly,避免防御性拷贝
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -735,14 +747,21 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Dispose() => _builder.Dispose();
 
-	// public readonly override bool Equals(object? obj) => false;
-
-	// public static bool operator !=(FastQueryString left, FastQueryString right) => false;
-
 	// public override int GetHashCode() => throw new NotImplementedException();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string Serialize(FastQueryString qs) => qs.ToString();
 
-	readonly IEnumerator IEnumerable.GetEnumerator() => throw new NotImplementedException();
+	public override int GetHashCode() => ToString().GetHashCode();
+
+	public readonly override bool Equals(object? obj) => false;
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public readonly bool Equals(FastQueryString<TEncoder> other) => this == other;
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool operator !=(FastQueryString<TEncoder> left, FastQueryString<TEncoder> right) => left.ToString() != right.ToString();
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool operator ==(FastQueryString<TEncoder> left, FastQueryString<TEncoder> right) => left.ToString() == right.ToString();
 }

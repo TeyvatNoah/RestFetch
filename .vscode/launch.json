@@ -10,7 +10,7 @@
 			"request": "launch",
 			"preLaunchTask": "build:RestFetch",
 			// If you have changed target frameworks, make sure to update the program path.
-			"program": "${workspaceFolder}/src/RestFetch.Core/bin/Debug/net8.0/RestFetch.Core.dll",
+			"program": "${workspaceFolder}/src/RestFetch.Core/bin/Debug/net10.0/RestFetch.Core.dll",
 			"args": [],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
@@ -70,7 +70,7 @@
 			"request": "launch",
 			"preLaunchTask": "build:WebUtilities",
 			// If you have changed target frameworks, make sure to update the program path.
-			"program": "${workspaceFolder}/src/RestFetch.WebUtilities/bin/Debug/net8.0/RestFetch.WebUtilities.dll",
+			"program": "${workspaceFolder}/src/RestFetch.WebUtilities/bin/Debug/net10.0/RestFetch.WebUtilities.dll",
 			"args": [],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
@@ -130,7 +130,7 @@
 			"request": "launch",
 			"preLaunchTask": "build:SourceGenerator",
 			// If you have changed target frameworks, make sure to update the program path.
-			"program": "${workspaceFolder}/src/RestFetch.SourceGenerator/bin/Debug/net8.0/RestFetch.SourceGenerator.dll",
+			"program": "${workspaceFolder}/src/RestFetch.SourceGenerator/bin/Debug/net10.0/RestFetch.SourceGenerator.dll",
 			"args": [],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
@@ -190,7 +190,7 @@
 			"request": "launch",
 			"preLaunchTask": "build:Benchmark",
 			// If you have changed target frameworks, make sure to update the program path.
-			"program": "${workspaceFolder}/src/Benchmark/bin/Debug/net8.0/Benchmark.dll",
+			"program": "${workspaceFolder}/src/Benchmark/bin/Debug/net10.0/Benchmark.dll",
 			"args": [],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
@@ -250,7 +250,7 @@
 			"request": "launch",
 			"preLaunchTask": "build:Tests",
 			// If you have changed target frameworks, make sure to update the program path.
-			"program": "${workspaceFolder}/src/RestFetch.Tests/bin/Debug/net8.0/RestFetch.Tests.dll",
+			"program": "${workspaceFolder}/src/RestFetch.Tests/bin/Debug/net10.0/RestFetch.Tests.dll",
 			"args": [],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
@@ -310,7 +310,7 @@
 			"request": "launch",
 			"preLaunchTask": "build:Common",
 			// If you have changed target frameworks, make sure to update the program path.
-			"program": "${workspaceFolder}/src/RestFetch.Common/bin/Debug/net8.0/RestFetch.Common.dll",
+			"program": "${workspaceFolder}/src/RestFetch.Common/bin/Debug/net10.0/RestFetch.Common.dll",
 			"args": [],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
@@ -370,7 +370,7 @@
 			"request": "launch",
 			"preLaunchTask": "build:Examples",
 			// If you have changed target frameworks, make sure to update the program path.
-			"program": "${workspaceFolder}/src/RestFetch.Examples/bin/Debug/net8.0/RestFetch.Examples.dll",
+			"program": "${workspaceFolder}/src/RestFetch.Examples/bin/Debug/net10.0/RestFetch.Examples.dll",
 			"args": [],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console

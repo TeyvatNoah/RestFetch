@@ -3,21 +3,21 @@ namespace RestFetch.WebUtilities;
 using InternalDictionary = Dictionary<string, List<string>>;
 
 
-public partial class QueryString<TEncoder, TDecoder> {
-	public static QueryString<TEncoder, TDecoder> ParseSimple(string? str) {
+public partial class QueryString<TEncoder> {
+	public static QueryString<TEncoder> ParseSimple(string? str) {
 		if (string.IsNullOrWhiteSpace(str)) {
 			return [];
 		}
-		var qs = new QueryString<TEncoder, TDecoder>();
+		var qs = new QueryString<TEncoder>();
 		ParseSimple(str, qs._dict);
 		return qs;
 	}
 
-	public static QueryString<TEncoder, TDecoder> ParseFromFastQS(string? str) {
+	public static QueryString<TEncoder> ParseFromFastQS(string? str) {
 		if (string.IsNullOrWhiteSpace(str)) {
 			return [];
 		}
-		var qs = new QueryString<TEncoder, TDecoder>();
+		var qs = new QueryString<TEncoder>();
 		ParseFromFastQS(str, qs._dict);
 		return qs;
 	}
@@ -46,7 +46,7 @@ public partial class QueryString<TEncoder, TDecoder> {
 			if (ch == '&') {
 				ampIdx = i;
 				ReadOnlySpan<char> valueSpan = qs[(eqIdx + 1)..ampIdx];
-				valueStr = maybeShouldDecode ? TDecoder.DecodeURIComponent(valueSpan) : new string(valueSpan);
+				valueStr = maybeShouldDecode ? TEncoder.DecodeURIComponent(valueSpan) : new string(valueSpan);
 
 				AddKeyValue(keyStr, valueStr, dict);
 
@@ -58,12 +58,12 @@ public partial class QueryString<TEncoder, TDecoder> {
 			} else if (ch == '=') {
 				eqIdx = i;
 				ReadOnlySpan<char> keySpan = qs[(ampIdx + 1)..eqIdx];
-				keyStr = maybeShouldDecode ? TDecoder.DecodeURIComponent(qs[(ampIdx + 1)..eqIdx]) : new string(keySpan);
+				keyStr = maybeShouldDecode ? TEncoder.DecodeURIComponent(qs[(ampIdx + 1)..eqIdx]) : new string(keySpan);
 			} else if (ch == '+' || ch == '%') {
 				maybeShouldDecode = true;
 			}
 		}
-		
+
 	}
 
 	protected static void ParseFromFastQS(string? input, InternalDictionary dict) {
@@ -91,12 +91,12 @@ public partial class QueryString<TEncoder, TDecoder> {
 				ReadOnlySpan<char> key = qs[(startingIndex + 1)..equalityIndex];
 
 				if (hasBothKeyValuePair || key.Length > 0) {
-					keyStr = shouldDecodeKey ? TDecoder.DecodeURIComponent(key) : new string(key);
+					keyStr = shouldDecodeKey ? TEncoder.DecodeURIComponent(key) : new string(key);
 
 					if (hasBothKeyValuePair) {
 						ReadOnlySpan<char> value = qs[(equalityIndex + 1)..i];
 
-						valueStr = shouldDecodeValue ? TDecoder.DecodeURIComponent(value) : new string(value);
+						valueStr = shouldDecodeValue ? TEncoder.DecodeURIComponent(value) : new string(value);
 					}
 					
 					if (dict.TryGetValue(keyStr, out var list)) {

@@ -10,19 +10,19 @@ using InternalDictionary = Dictionary<string, List<string>>;
 
 // 假装有默认泛型参数
 public sealed class QueryString:
-	QueryString<URLHelper, URLHelper>,
+	QueryString<IURLEncoder>,
 	IQueryStringConverter<QueryString>,
 	IAliasQueryStringSerializer<QueryString> {
-	
+
 	public QueryString() {}
 
 	public QueryString(string str): base(str) {}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static string Serialize(QueryString value) => QueryString<URLHelper, URLHelper>.Serialize(value);
+	public static string Serialize(QueryString value) => QueryString<IURLEncoder>.Serialize(value);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static string Serialize(string aliasKey, QueryString? value) => QueryString<URLHelper, URLHelper>.Serialize(aliasKey, value);
+	public static string Serialize(string aliasKey, QueryString? value) => QueryString<IURLEncoder>.Serialize(aliasKey, value);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParse(string? str, [NotNullWhen(true)]out QueryString? retval) {
@@ -32,7 +32,7 @@ public sealed class QueryString:
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public new static QueryString Parse(string? str) => Unsafe.As<QueryString>(QueryString<URLHelper, URLHelper>.Parse(str));
+	public new static QueryString Parse(string? str) => Unsafe.As<QueryString>(QueryString<IURLEncoder>.Parse(str));
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public new QueryString Set(string key, string value) {
@@ -51,18 +51,20 @@ public sealed class QueryString:
 	}
 }
 
-public partial class QueryString<TEncoder, TDecoder>:
-	IQueryStringConverter<QueryString<TEncoder, TDecoder>>,
+public partial class QueryString<TEncoder>:
+	IQueryStringConverter<QueryString<TEncoder>>,
 	// for internal
-	IAliasQueryStringSerializer<QueryString<TEncoder, TDecoder>>
+	IAliasQueryStringSerializer<QueryString<TEncoder>>
 	where TEncoder: IURLEncoder
-	where TDecoder: IURLDecoder
 	{
 	public const string Separator = "&";
+
 	public const string Eq = "=";
+
 	// 此字符串不执行URL编码,务必提前URL编码
-	public static string TrueStr = "1";
-	public static string FalseStr = "0";
+	public static string TrueValue = "1";
+
+	public static string FalseValue = "0";
 
 	protected readonly InternalDictionary _dict = [];
 
@@ -86,11 +88,11 @@ public partial class QueryString<TEncoder, TDecoder>:
 		Parse(str, _dict);
 	}
 
-	public static QueryString<TEncoder, TDecoder> Parse(string? str) {
+	public static QueryString<TEncoder> Parse(string? str) {
 		if (string.IsNullOrWhiteSpace(str)) {
 			return [];
 		}
-		var qs = new QueryString<TEncoder, TDecoder>();
+		var qs = new QueryString<TEncoder>();
 		Parse(str, qs._dict);
 		return qs;
 	}
@@ -108,28 +110,28 @@ public partial class QueryString<TEncoder, TDecoder>:
 				start = end + 1;
 			}
 		}
-		
+
 		// start == end == 0
 		if (start == end) {
 			AddKeyValuePair(qs, dict);
 		}
 	}
-	
+
 	private static void AddKeyValuePair(ReadOnlySpan<char> kvpair, InternalDictionary dict) {
 		int start = 0, end = 0;
 		for (int i = 0, len = kvpair.Length; i < len; ++i) {
 			if (kvpair[i] == '=') {
 				end = i;
-				var key = TDecoder.DecodeURIComponent(kvpair[start..end]);
-				var value = TDecoder.DecodeURIComponent(kvpair[(end + 1)..len]);
+				var key = TEncoder.DecodeURIComponent(kvpair[start..end]);
+				var value = TEncoder.DecodeURIComponent(kvpair[(end + 1)..len]);
 				AddKeyValue(key, value, dict);
 			}
 		}
-		
+
 		if (start == end) {
 			AddKeyValue(new(kvpair), string.Empty, dict);
 		}
-		
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		static void AddKeyValue(string k, string v, InternalDictionary dict) {
 			if (dict.TryGetValue(k, out var list)) {
@@ -140,7 +142,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 		}
 	}
 
-	public static bool TryParse(string? str, [NotNullWhen(true)]out QueryString<TEncoder, TDecoder>? retval) {
+	public static bool TryParse(string? str, [NotNullWhen(true)]out QueryString<TEncoder>? retval) {
 		try {
 			var qs = Parse(str);
 			retval = qs;
@@ -152,11 +154,11 @@ public partial class QueryString<TEncoder, TDecoder>:
 	}
 
 	// QueryString
-	public static string Serialize(QueryString<TEncoder, TDecoder>? qs) {
+	public static string Serialize(QueryString<TEncoder>? qs) {
 		if (qs is null) {
 			return "";
 		} else {
-			using var sb = ZString.CreateStringBuilder();
+			using var sb = ZString.CreateStringBuilder(true);
 
 			var iter = qs.GetEnumerator();
 
@@ -184,7 +186,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// QueryString
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static string Serialize(string _, QueryString<TEncoder, TDecoder>? value) => Serialize(value);
+	public static string Serialize(string _, QueryString<TEncoder>? value) => Serialize(value);
 
 	// string
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -192,7 +194,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<KeyValuePair<string, string?>>/IEnumerable<KeyValuePair<string, string>>
 	public static string Serialize(IEnumerable<KeyValuePair<string, string?>> collection) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
 		var (key, value) = iterator.Current;
@@ -226,7 +228,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<string?>/IEnumerable<string>
 	public static string Serialize(string aliasKey, IEnumerable<string?> collection) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
 		var current = iterator.Current;
@@ -254,7 +256,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// string[]/string?[]
 	public static string Serialize(string aliasKey, string?[] array) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 
 		if (array.Length > 0) {
 			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -281,7 +283,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// bool
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static string Serialize(bool value) => value ? TrueStr : FalseStr;
+	public static string Serialize(bool value) => value ? TrueValue : FalseValue;
 
 	// bool
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -289,7 +291,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// bool?
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static string Serialize(bool? value) => value is bool v ? v ? TrueStr : FalseStr : "";
+	public static string Serialize(bool? value) => value is bool v ? v ? TrueValue : FalseValue : "";
 
 	// bool?
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -297,7 +299,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// bool[]
 	public static string Serialize(string aliasKey, bool[] array) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 
 		if (array.Length > 0) {
 			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -321,7 +323,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// bool?[]
 	public static string Serialize(string aliasKey, bool?[] array) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 
 		if (array.Length > 0) {
 			var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -351,7 +353,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<bool>
 	public static string Serialize(string aliasKey, IEnumerable<bool> collection) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
 		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -376,7 +378,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<bool?>
 	public static string Serialize(string aliasKey, IEnumerable<bool?> collection) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
 		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
@@ -403,7 +405,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<KeyValuePair<string, bool>>
 	public static string Serialize(IEnumerable<KeyValuePair<string, bool>> collection) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
 		var (key, value) = iterator.Current;
@@ -430,7 +432,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 
 	// IEnumerable<KeyValuePair<string, bool?>>
 	public static string Serialize(IEnumerable<KeyValuePair<string, bool?>> collection) {
-		using var sb = ZString.CreateStringBuilder();
+		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
 		if (iterator.MoveNext() && iterator.Current.Value is bool v) {
@@ -467,7 +469,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public QueryString<TEncoder, TDecoder> Set(string key, string value) {
+	public QueryString<TEncoder> Set(string key, string value) {
 		_dict[key] = new(1) {
 			value
 		};
@@ -476,14 +478,13 @@ public partial class QueryString<TEncoder, TDecoder>:
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public QueryString<TEncoder, TDecoder> Set(string key, IEnumerable<string> list) {
+	public QueryString<TEncoder> Set(string key, IEnumerable<string> list) {
 		_dict[key] = list is List<string> l ? l : [..list];
 		_shouldUpdate = ShouldUpdateStatus.Raw | ShouldUpdateStatus.Escaped;
 		return this;
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public QueryString<TEncoder, TDecoder> Add(string key, string value) {
+	public QueryString<TEncoder> Add(string key, string value) {
 		if (_dict.TryGetValue(key, out var values)) {
 			values.Add(value);
 		} else {
@@ -497,9 +498,9 @@ public partial class QueryString<TEncoder, TDecoder>:
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public QueryString<TEncoder, TDecoder> Add(KeyValuePair<string, string> item) => Add(item.Key, item.Value);
+	public QueryString<TEncoder> Add(KeyValuePair<string, string> item) => Add(item.Key, item.Value);
 
-	public QueryString<TEncoder, TDecoder> Add(string key, IEnumerable<string> collection) {
+	public QueryString<TEncoder> Add(string key, IEnumerable<string> collection) {
 		if (_dict.TryGetValue(key, out var values)) {
 			values.AddRange(collection);
 		} else {
@@ -510,7 +511,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 		return this;
 	}
 
-	public QueryString<TEncoder, TDecoder> Add(string key, string[] array) {
+	public QueryString<TEncoder> Add(string key, string[] array) {
 		if (_dict.TryGetValue(key, out var values)) {
 			for (var i = 0; i < array.Length; ++i){
 				values.Add(array[i]);
@@ -526,7 +527,7 @@ public partial class QueryString<TEncoder, TDecoder>:
 		return this;
 	}
 
-	public QueryString<TEncoder, TDecoder> Add(IEnumerable<KeyValuePair<string, string>> collection) {
+	public QueryString<TEncoder> Add(IEnumerable<KeyValuePair<string, string>> collection) {
 		foreach (var item in collection) {
 			Add(item.Key, item.Value);
 		}
@@ -543,13 +544,14 @@ public partial class QueryString<TEncoder, TDecoder>:
 		_shouldUpdate = ShouldUpdateStatus.Raw | ShouldUpdateStatus.Escaped;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Remove(string key, out bool result) {
 		result = _dict.Remove(key);
 		_shouldUpdate = ShouldUpdateStatus.Raw | ShouldUpdateStatus.Escaped;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public QueryString<TEncoder, TDecoder> Remove(string key) {
+	public QueryString<TEncoder> Remove(string key) {
 		Remove(key, out _);
 		return this;
 	}
@@ -594,8 +596,8 @@ public partial class QueryString<TEncoder, TDecoder>:
 	// [MethodImpl(MethodImplOptions.AggressiveInlining)]
 	// private static string SerializeNumeric<N>(string? aliasKey, N v) where N: struct => v is N ? ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, v.ToString(CultureInfo.InvariantCulture)) : "";
 
-	protected static string UnescapeSerialize(QueryString<TEncoder, TDecoder> qs) {
-		using var sb = ZString.CreateStringBuilder();
+	protected static string UnescapeSerialize(QueryString<TEncoder> qs) {
+		using var sb = ZString.CreateStringBuilder(true);
 
 		var iter = qs.GetEnumerator();
 
@@ -650,15 +652,22 @@ public partial class QueryString<TEncoder, TDecoder>:
 	// [MethodImpl(MethodImplOptions.AggressiveInlining)]
 	// public override ReadOnlySpan<byte> ToUTF8String() => SerializeUTF8String(this);
 
-	public struct Enumerator(QueryString<TEncoder, TDecoder> qs) {
+	public ref struct Enumerator: IEquatable<Enumerator> {
 		public KeyValuePair<string, string> Current { get; private set; }
 
-		private InternalDictionary.Enumerator _dictEnumerator = qs._dict.GetEnumerator();
+		private InternalDictionary.Enumerator _dictEnumerator;
 
-		private IEnumerator<string>? _listEnumerator;
+		private List<string>.Enumerator _listEnumerator;
+
+		public Enumerator(QueryString<TEncoder> qs) {
+			// TODO 确认此构造函数在foreach时候会被调用,以及确认此迭代器工作正确
+			_dictEnumerator = qs._dict.GetEnumerator();
+			_dictEnumerator.MoveNext();
+			_listEnumerator = _dictEnumerator.Current.Value.GetEnumerator();
+		}
 
 		public bool MoveNext() {
-			if (_listEnumerator is not null && _listEnumerator.MoveNext()) {
+			if (_listEnumerator.MoveNext()) {
 				Current = new(_dictEnumerator.Current.Key, _listEnumerator.Current);
 				return true;
 			} else if (_dictEnumerator.MoveNext()) {
@@ -672,19 +681,25 @@ public partial class QueryString<TEncoder, TDecoder>:
 			return false;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Dispose() {
-			_listEnumerator?.Dispose();
+			_listEnumerator.Dispose();
 			_dictEnumerator.Dispose();
 		}
 
 		public readonly override string ToString() => $"{Current.Key}={Current.Value}";
 
+		public readonly override int GetHashCode() => string.GetHashCode(Current.Key + Current.Value, StringComparison.Ordinal);
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public readonly bool Equals(Enumerator obj) => this == obj;
+
 		public readonly override bool Equals(object? obj) => false;
 
-		public override readonly int GetHashCode() => Guid.NewGuid().GetHashCode();
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool operator ==(Enumerator left, Enumerator right) => left.Current.Key == right.Current.Key && left.Current.Value == right.Current.Value ;
 
-		public static bool operator ==(Enumerator left, Enumerator right) => false;
-
-		public static bool operator !=(Enumerator left, Enumerator right) => true;
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool operator !=(Enumerator left, Enumerator right) => !(left == right);
 	}
 }

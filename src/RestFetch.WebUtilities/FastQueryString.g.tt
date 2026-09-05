@@ -5,7 +5,7 @@
 #>
 namespace RestFetch.WebUtilities;
 
-public partial struct FastQueryString {
+public ref partial struct FastQueryString {
 <# foreach (var type in primitiveNumericTypes) { #>
 	public void Add(string key, <#= type #> value) {
 		if (!_isFirst) {

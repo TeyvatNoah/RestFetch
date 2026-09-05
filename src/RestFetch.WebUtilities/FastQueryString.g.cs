@@ -1,6 +1,6 @@
 namespace RestFetch.WebUtilities;
 
-public partial struct FastQueryString {
+public ref partial struct FastQueryString {
 	public void Add(string key, short value) {
 		if (!_isFirst) {
 	 		_builder.Append('&');		

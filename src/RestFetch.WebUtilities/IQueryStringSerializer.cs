@@ -8,7 +8,7 @@ namespace RestFetch.WebUtilities;
 // 有key则不会调用此方法
 // 用作内部使用,用作用户实现,用作类方法
 // 无key且value非null时优先调用
-public interface IQueryStringSerializer<in T> {
+public interface IQueryStringSerializer<in T> where T: allows ref struct {
 	#pragma warning disable CA1000
 	static abstract string Serialize(T value);
 	// static abstract ReadOnlySpan<byte> SerializeUTF8String(T? value);
@@ -19,7 +19,7 @@ public interface IQueryStringSerializer<in T> {
 // 无key则不会调用此方法
 // 用作内部使用,用作用户实现,不用作类方法
 // 有key且value可空时调用
-public interface IAliasQueryStringSerializer<in T> {
+internal interface IAliasQueryStringSerializer<in T> where T: allows ref struct {
 	// TODO 考虑此方法private或internal
 	#pragma warning disable CA1000
 	static abstract string Serialize(string aliasKey, T value);
@@ -29,6 +29,6 @@ public interface IAliasQueryStringSerializer<in T> {
 
 // 不用作内部使用,用作用户实现,用作类方法
 public interface IQueryStringSerializer {
-	static abstract string Serialize<T>(T? value);
+	static abstract string Serialize<T>(T? value) where T: allows ref struct;
 	// static abstract ReadOnlySpan<byte> SerializeUTF8String(T? value);
 }
