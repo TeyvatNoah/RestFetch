@@ -9,7 +9,7 @@
 		<!-- <PackageId>TODO</PackageId> -->
 		<!-- <Description>TODO</Description> -->
 
-		<!-- <TargetFrameworks>net10.0;netstandard2.1;</TargetFrameworks> -->
+		<!-- <TargetFrameworks>net11.0;netstandard2.1;</TargetFrameworks> -->
 		<OutputType>Exe</OutputType>
     <!-- 输出exe,dll文件名 -->
     <!-- <AssemblyName>$(Exefile)</AssemblyName> -->
@@ -25,10 +25,13 @@
 	</PropertyGroup>
 
 	<!-- Debug配置 -->
-	<!-- <PropertyGroup Condition="'$(Configuration)'=='' Or '$(Configuration)'=='DEBUG' Or '$(Configuration)'=='Debug'">
-		pdb文件位置和名称
-		<PdbFile>$(Exefile)</PdbFile>
-	</PropertyGroup> -->
+	<PropertyGroup Condition="'$(Configuration)'=='' Or '$(Configuration)'=='DEBUG' Or '$(Configuration)'=='Debug'">
+		<!-- pdb文件位置和名称
+		<PdbFile>$(Exefile)</PdbFile> -->
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+		<!-- 源生成器调试开关 -->
+		<UseStaticGeneratedFiles>false</UseStaticGeneratedFiles>
+	</PropertyGroup>
 
 	<!-- Release配置 -->
 	<PropertyGroup Condition="'$(Configuration)'=='RELEASE' Or '$(Configuration)'=='Release'">
@@ -56,10 +59,10 @@
 		<PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols> -->
 
 		<!-- AOT -->
-		<PublishAot>true</PublishAot>
+		<!-- <PublishAot>true</PublishAot>
 		<OptimizationPreference>speed</OptimizationPreference>
 		<EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
-		<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+		<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault> -->
 
 		<!-- JIT & PGO -->
 		<!-- <TieredPGO>true</TieredPGO>
@@ -68,18 +71,18 @@
 		<TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops> -->
 
 		<!-- trim -->
-		<PublishTrimmed>true</PublishTrimmed>
+		<!-- <PublishTrimmed>true</PublishTrimmed>
 		<TrimMode>full</TrimMode>
 		<InvariantGlobalization>true</InvariantGlobalization>
 		<EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
 		<EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
 		<StartupHookSupport>false</StartupHookSupport>
-		<EnableUnsafeBinaryFormatterInDesigntimeLicenseContextSerialization>false</EnableUnsafeBinaryFormatterInDesigntimeLicenseContextSerialization>
+		<EnableUnsafeBinaryFormatterInDesigntimeLicenseContextSerialization>false</EnableUnsafeBinaryFormatterInDesigntimeLicenseContextSerialization> -->
 		<!-- symbols -->
-		<TrimmerRemoveSymbols>false</TrimmerRemoveSymbols>
-		<DebuggerSupport>true</DebuggerSupport>
+		<!-- <TrimmerRemoveSymbols>false</TrimmerRemoveSymbols>
+		<DebuggerSupport>true</DebuggerSupport> -->
 		<!-- 裁剪分析 -->
-		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+		<!-- <EnableTrimAnalyzer>true</EnableTrimAnalyzer> -->
 
 		<!-- runtime -->
 		<!-- GC -->
@@ -106,8 +109,25 @@
 			<DependentUpon>file.tt</DependentUpon>
 		</Compile>
 	</ItemGroup> -->
-	<!-- <ItemGroup>
-		<None Include="README.md" Pack="true" PackagePath="\"/>
-		<None Include="LICENSE" Pack="true" PackagePath="\"/>
-	</ItemGroup> -->
+	<ItemGroup>
+		<!-- <None Include="README.md" Pack="true" PackagePath="\"/>
+		<None Include="LICENSE" Pack="true" PackagePath="\"/> -->
+		<Compile Remove="./$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+		<ProjectReference Include="../RestFetch.Core/RestFetch.Core.csproj"/>
+	</ItemGroup>
+
+	<Choose>
+		<When Condition="'$(UseStaticGeneratedFiles)' == 'true'">
+			<ItemGroup>
+				<!-- 静态模式：将落盘文件显式加入编译清单 -->
+				<Compile Include="./$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+			</ItemGroup>
+		</When>
+		<Otherwise>
+			<ItemGroup>
+				<!-- 动态模式：排除落盘文件，防止与内存代码冲突 -->
+				<Compile Remove="./$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+			</ItemGroup>
+		</Otherwise>
+	</Choose>
 </Project>

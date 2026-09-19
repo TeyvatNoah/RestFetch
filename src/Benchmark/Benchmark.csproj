@@ -6,7 +6,7 @@
 		<Version>0.1.0</Version>
 		<!-- <Description>TODO</Description> -->
 
-		<!-- <TargetFrameworks>net10.0;netstandard2.1;</TargetFrameworks> -->
+		<!-- <TargetFrameworks>net11.0;netstandard2.1;</TargetFrameworks> -->
 		<OutputType>Exe</OutputType>
     <!-- 输出exe,dll文件名 -->
     <!-- <AssemblyName>$(Exefile)</AssemblyName> -->

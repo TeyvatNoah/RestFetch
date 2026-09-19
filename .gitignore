@@ -8,4 +8,6 @@ obj
 
 .vs
 
+GeneratedFiles
+
 BenchmarkDotNet.Artifacts

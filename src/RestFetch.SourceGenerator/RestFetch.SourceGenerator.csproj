@@ -2,6 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- 通用配置 -->
   <PropertyGroup>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- 包信息 -->
 		<PackageId>RestFetch.SourceGenerator</PackageId>
 		<Version>0.1.0</Version>
@@ -16,7 +17,7 @@
 
     <!-- output target -->
     <TargetFramework>netstandard2.0</TargetFramework>
-    <!-- <TargetFramework>net10.0</TargetFramework> -->
+    <!-- <TargetFramework>net11.0</TargetFramework> -->
     <OutputType>Library</OutputType>
     <!-- 输出exe,dll文件名 -->
     <!-- <AssemblyName>$(Exefile)</AssemblyName> -->
@@ -47,6 +48,9 @@
     <!-- T4模板 -->
     <!-- <TransformOnBuild>True</TransformOnBuild>
     <TransformOutOfDateOnly>True</TransformOutOfDateOnly> -->
+
+		<!-- 方便VS调试 -->
+		<IsRoslynComponent>true</IsRoslynComponent>
   </PropertyGroup>
 
   <!-- Debug配置 -->
@@ -87,18 +91,39 @@
 		</Compile>
 	</ItemGroup> -->
   <ItemGroup>
+		<Compile Remove="./*Attribute.cs" />
+		<EmbeddedResource Include="./AfterResponseAttribute.cs" LogicalName="RestFetch.AfterResponseAttribute.cs" />
+		<EmbeddedResource Include="./BaseAddressAttribute.cs" LogicalName="RestFetch.BaseAddressAttribute.cs" />
+		<EmbeddedResource Include="./BeforeSendAttribute.cs" LogicalName="RestFetch.BeforeSendAttribute.cs" />
+		<EmbeddedResource Include="./BodyAttribute.cs" LogicalName="RestFetch.BodyAttribute.cs" />
+		<EmbeddedResource Include="./ErrorFactoryAttribute.cs" LogicalName="RestFetch.ErrorFactoryAttribute.cs" />
+		<EmbeddedResource Include="./HeaderAttribute.cs" LogicalName="RestFetch.HeaderAttribute.cs" />
+		<EmbeddedResource Include="./HttpClientProxyAttribute.cs" LogicalName="RestFetch.HttpClientProxyAttribute.cs" />
+		<EmbeddedResource Include="./HttpMethodAttribute.cs" LogicalName="RestFetch.HttpMethodAttribute.cs" />
+		<EmbeddedResource Include="./IdGeneratorAttribute.cs" LogicalName="RestFetch.IdGeneratorAttribute.cs" />
+		<EmbeddedResource Include="./MetaDataAttribute.cs" LogicalName="RestFetch.MetaDataAttribute.cs" />
+		<EmbeddedResource Include="./OnErrorAttribute.cs" LogicalName="RestFetch.OnErrorAttribute.cs" />
+		<EmbeddedResource Include="./OnSuccessAttribute.cs" LogicalName="RestFetch.OnSuccessAttribute.cs" />
+		<EmbeddedResource Include="./ParamAttribute.cs" LogicalName="RestFetch.ParamAttribute.cs" />
+		<EmbeddedResource Include="./QueryAttribute.cs" LogicalName="RestFetch.QueryAttribute.cs" />
+		<EmbeddedResource Include="./ResponseAttribute.cs" LogicalName="RestFetch.ResponseAttribute.cs" />
+	</ItemGroup>
+	<ItemGroup>
 		<PackageReference Include="ZString" GeneratePathProperty="true" PrivateAssets="all" />
 		<!-- dev dependency -->
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.9.0" PrivateAssets="all" />
-		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" VersionOverride="5.9.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.6.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" VersionOverride="5.6.0" PrivateAssets="all" />
 		<PackageReference Include="IndexRange" VersionOverride="1.1.1" PrivateAssets="all" />
 		<PackageReference Include="Nullable" VersionOverride="1.3.1" PrivateAssets="all" />
+		<PackageReference Include="IsExternalInit" VersionOverride="1.0.3" PrivateAssets="all" />
+		<!-- <ProjectReference Include="../RestFetch.WebUtilities/RestFetch.WebUtilities.csproj" PrivateAssets="All" />
+		<ProjectReference Include="../RestFetch.Common/RestFetch.Common.csproj" PrivateAssets="All" /> -->
 	</ItemGroup>
 	<!-- TODO
   <ItemGroup>
     <ProjectReference Include="..\RoslynHelper\RoslynHelper.csproj" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup> -->
-  <ItemGroup>
+	<ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="LICENSE" Pack="true" PackagePath="\" />
 		<!-- for icon -->
@@ -128,5 +153,13 @@
 			<TargetPathWithTargetPlatformMoniker Include="@(_RoslynHelper_OutputItem)" IncludeRuntimeDependency="false" /> -->
 			<TargetPathWithTargetPlatformMoniker Include="$(PKGZString)\lib\netstandard2.0\ZString.dll" IncludeRuntimeDependency="false" />
 		</ItemGroup>
+	</Target>
+
+	<!-- 在build时把依赖项dll拷贝到输出目录方便其他项目收集dll -->
+	<Target Name="CopySelectedDependenciesToOutput" AfterTargets="Build">
+		<ItemGroup>
+			<ExtraAnalyzerDlls Include="$(PKGZString)\lib\netstandard2.0\ZString.dll" />
+		</ItemGroup>
+		<Copy SourceFiles="@(ExtraAnalyzerDlls)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
 	</Target>
 </Project>

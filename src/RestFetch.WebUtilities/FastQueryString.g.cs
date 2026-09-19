@@ -1,32 +1,32 @@
 namespace RestFetch.WebUtilities;
 
-public ref partial struct FastQueryString {
+public partial struct FastQueryString {
 	public void Add(string key, short value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, short> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, short>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -45,7 +45,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<short> values) {
@@ -57,35 +57,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, short? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((short)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, short?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((short)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, short?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -106,7 +106,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((short)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<short?> values) {
@@ -122,30 +122,30 @@ public ref partial struct FastQueryString {
 
 	public void Add(string key, int value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, int> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, int>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -164,7 +164,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<int> values) {
@@ -176,35 +176,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, int? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((int)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, int?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((int)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, int?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -225,7 +225,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((int)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<int?> values) {
@@ -241,30 +241,30 @@ public ref partial struct FastQueryString {
 
 	public void Add(string key, long value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, long> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, long>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -283,7 +283,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<long> values) {
@@ -295,35 +295,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, long? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((long)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, long?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((long)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, long?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -344,7 +344,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((long)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<long?> values) {
@@ -360,30 +360,30 @@ public ref partial struct FastQueryString {
 
 	public void Add(string key, ushort value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, ushort> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, ushort>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -402,7 +402,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<ushort> values) {
@@ -414,35 +414,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, ushort? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((ushort)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, ushort?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((ushort)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, ushort?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -463,7 +463,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((ushort)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<ushort?> values) {
@@ -479,30 +479,30 @@ public ref partial struct FastQueryString {
 
 	public void Add(string key, uint value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, uint> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, uint>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -521,7 +521,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<uint> values) {
@@ -533,35 +533,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, uint? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((uint)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, uint?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((uint)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, uint?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -582,7 +582,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((uint)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<uint?> values) {
@@ -598,30 +598,30 @@ public ref partial struct FastQueryString {
 
 	public void Add(string key, ulong value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, ulong> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, ulong>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -640,7 +640,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<ulong> values) {
@@ -652,35 +652,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, ulong? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((ulong)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, ulong?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((ulong)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, ulong?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -701,7 +701,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((ulong)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<ulong?> values) {
@@ -717,30 +717,30 @@ public ref partial struct FastQueryString {
 
 	public void Add(string key, float value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, float> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, float>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -759,7 +759,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<float> values) {
@@ -771,35 +771,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, float? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((float)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, float?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((float)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, float?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -820,7 +820,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((float)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<float?> values) {
@@ -836,30 +836,30 @@ public ref partial struct FastQueryString {
 
 	public void Add(string key, double value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, double> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, double>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -878,7 +878,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<double> values) {
@@ -890,35 +890,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, double? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((double)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, double?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((double)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, double?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -939,7 +939,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((double)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<double?> values) {
@@ -955,30 +955,30 @@ public ref partial struct FastQueryString {
 
 	public void Add(string key, decimal value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, decimal> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, decimal>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -997,7 +997,7 @@ public ref partial struct FastQueryString {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<decimal> values) {
@@ -1009,35 +1009,35 @@ public ref partial struct FastQueryString {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, decimal? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((decimal)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, decimal?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(URLHelper.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((decimal)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, decimal?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -1058,7 +1058,7 @@ public ref partial struct FastQueryString {
 			_builder.Append((decimal)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<decimal?> values) {
@@ -1077,30 +1077,30 @@ public ref partial struct FastQueryString {
 public partial struct FastQueryString<TEncoder> {
 	public void Add(string key, short value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, short> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, short>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -1119,7 +1119,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<short> values) {
@@ -1131,35 +1131,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, short? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((short)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, short?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((short)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, short?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -1180,7 +1180,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((short)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<short?> values) {
@@ -1196,30 +1196,30 @@ public partial struct FastQueryString<TEncoder> {
 
 	public void Add(string key, int value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, int> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, int>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -1238,7 +1238,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<int> values) {
@@ -1250,35 +1250,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, int? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((int)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, int?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((int)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, int?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -1299,7 +1299,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((int)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<int?> values) {
@@ -1315,30 +1315,30 @@ public partial struct FastQueryString<TEncoder> {
 
 	public void Add(string key, long value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, long> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, long>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -1357,7 +1357,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<long> values) {
@@ -1369,35 +1369,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, long? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((long)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, long?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((long)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, long?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -1418,7 +1418,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((long)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<long?> values) {
@@ -1434,30 +1434,30 @@ public partial struct FastQueryString<TEncoder> {
 
 	public void Add(string key, ushort value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, ushort> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, ushort>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -1476,7 +1476,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<ushort> values) {
@@ -1488,35 +1488,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, ushort? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((ushort)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, ushort?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((ushort)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, ushort?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -1537,7 +1537,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((ushort)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<ushort?> values) {
@@ -1553,30 +1553,30 @@ public partial struct FastQueryString<TEncoder> {
 
 	public void Add(string key, uint value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, uint> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, uint>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -1595,7 +1595,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<uint> values) {
@@ -1607,35 +1607,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, uint? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((uint)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, uint?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((uint)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, uint?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -1656,7 +1656,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((uint)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<uint?> values) {
@@ -1672,30 +1672,30 @@ public partial struct FastQueryString<TEncoder> {
 
 	public void Add(string key, ulong value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, ulong> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, ulong>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -1714,7 +1714,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<ulong> values) {
@@ -1726,35 +1726,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, ulong? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((ulong)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, ulong?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((ulong)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, ulong?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -1775,7 +1775,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((ulong)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<ulong?> values) {
@@ -1791,30 +1791,30 @@ public partial struct FastQueryString<TEncoder> {
 
 	public void Add(string key, float value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, float> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, float>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -1833,7 +1833,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<float> values) {
@@ -1845,35 +1845,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, float? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((float)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, float?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((float)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, float?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -1894,7 +1894,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((float)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<float?> values) {
@@ -1910,30 +1910,30 @@ public partial struct FastQueryString<TEncoder> {
 
 	public void Add(string key, double value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, double> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, double>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -1952,7 +1952,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<double> values) {
@@ -1964,35 +1964,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, double? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((double)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, double?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((double)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, double?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -2013,7 +2013,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((double)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<double?> values) {
@@ -2029,30 +2029,30 @@ public partial struct FastQueryString<TEncoder> {
 
 	public void Add(string key, decimal value) {
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(KeyValuePair<string, decimal> kv) {
 		var (key, value) = kv;
-		
+
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append(value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, decimal>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (!_isFirst) _builder.Append('&');
@@ -2071,7 +2071,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append(values[i]);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<decimal> values) {
@@ -2083,35 +2083,35 @@ public partial struct FastQueryString<TEncoder> {
 		}
 		_isFirst = false;
 	}
-	
+
 	public void Add(string key, decimal? value) {
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((decimal)value);
 	}
-	
+
 	public void Add(KeyValuePair<string, decimal?> kv) {
 		var (key, value) = kv;
-		
+
 		if (value is null) return;
 		if (!_isFirst) {
-	 		_builder.Append('&');		
+	 		_builder.Append('&');
 		} else {
 			_isFirst = false;
 		}
-		
+
 		_builder.Append(TEncoder.EncodeURIComponent(key));
 		_builder.Append('=');
 		_builder.Append((decimal)value);
 	}
-	
+
 	public void Add(IEnumerable<KeyValuePair<string, decimal?>> kvPairs) {
 		foreach (var (key, value) in kvPairs) {
 			if (value is null) continue;
@@ -2132,7 +2132,7 @@ public partial struct FastQueryString<TEncoder> {
 			_builder.Append((decimal)values[i]!);
 		}
 		_isFirst = false;
-		
+
 	}
 
 	public void Add(string key, IEnumerable<decimal?> values) {

@@ -13,7 +13,7 @@ public class URLHelper: IURLEncoder {
 	public static string EncodeURIComponent(string? str) => str is null ? "" : UrlEncoder.Default.Encode(str);
 
 	public static string EncodeURIComponent(ReadOnlySpan<char> str) {
-		char[] destination = ArrayPool<char>.Shared.Rent(str.Length * 3);
+		var destination = ArrayPool<char>.Shared.Rent(str.Length * 3);
 		Span<char> destSpan = destination;
 		try {
 			var status = UrlEncoder.Default.Encode(str, destSpan, out _, out int len);

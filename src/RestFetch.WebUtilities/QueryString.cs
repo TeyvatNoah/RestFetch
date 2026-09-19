@@ -4,9 +4,9 @@ using System.Runtime.CompilerServices;
 
 using Cysharp.Text;
 
-namespace RestFetch.WebUtilities;
+using InternalDictionary = System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>>;
 
-using InternalDictionary = Dictionary<string, List<string>>;
+namespace RestFetch.WebUtilities;
 
 // 假装有默认泛型参数
 public sealed class QueryString:
@@ -32,13 +32,11 @@ public sealed class QueryString:
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public new static QueryString Parse(string? str) => Unsafe.As<QueryString>(QueryString<IURLEncoder>.Parse(str));
+	public static new QueryString Parse(string? str) => Unsafe.As<QueryString>(QueryString<IURLEncoder>.Parse(str));
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public new QueryString Set(string key, string value) {
-		_dict[key] = new(1) {
-			value
-		};
+		_dict[key] = [with(1), value];
 		_shouldUpdate = ShouldUpdateStatus.Raw | ShouldUpdateStatus.Escaped;
 		return this;
 	}
@@ -54,6 +52,8 @@ public sealed class QueryString:
 public partial class QueryString<TEncoder>:
 	IQueryStringConverter<QueryString<TEncoder>>,
 	// for internal
+	IAliasQueryStringSerializer<FastQueryString<TEncoder>>,
+	IAliasQueryStringSerializer<FastQueryString>,
 	IAliasQueryStringSerializer<QueryString<TEncoder>>
 	where TEncoder: IURLEncoder
 	{
@@ -137,7 +137,7 @@ public partial class QueryString<TEncoder>:
 			if (dict.TryGetValue(k, out var list)) {
 				list.Add(v);
 			} else {
-				dict[k] = new(1) { v };
+				dict[k] = [with(1), v];
 			}
 		}
 	}
@@ -183,6 +183,12 @@ public partial class QueryString<TEncoder>:
 			return sb.ToString();
 		}
 	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(string _, FastQueryString value) => value.ToString();
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(string _, FastQueryString<TEncoder> value) => value.ToString();
 
 	// QueryString
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -470,9 +476,7 @@ public partial class QueryString<TEncoder>:
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public QueryString<TEncoder> Set(string key, string value) {
-		_dict[key] = new(1) {
-			value
-		};
+		_dict[key] = [with(1), value];
 		_shouldUpdate = ShouldUpdateStatus.Raw | ShouldUpdateStatus.Escaped;
 		return this;
 	}
@@ -488,9 +492,7 @@ public partial class QueryString<TEncoder>:
 		if (_dict.TryGetValue(key, out var values)) {
 			values.Add(value);
 		} else {
-			values = new(1) {
-				value
-			};
+			values = [with(1), value];
 			_dict.Add(key, values);
 		}
 		_shouldUpdate = ShouldUpdateStatus.Raw | ShouldUpdateStatus.Escaped;
@@ -513,12 +515,12 @@ public partial class QueryString<TEncoder>:
 
 	public QueryString<TEncoder> Add(string key, string[] array) {
 		if (_dict.TryGetValue(key, out var values)) {
-			for (var i = 0; i < array.Length; ++i){
+			for (var i = 0; i < array.Length; ++i) {
 				values.Add(array[i]);
 			}
 		} else {
-			values = new(array.Length);
-			for (var i = 0; i < array.Length; ++i){
+			values = [with(array.Length)];
+			for (var i = 0; i < array.Length; ++i) {
 				values.Add(array[i]);
 			}
 			_dict.Add(key, values);
@@ -625,7 +627,7 @@ public partial class QueryString<TEncoder>:
 	// 不做URL escape
 	// sealed 应该可以内联
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public override string ToString() {
+	public sealed override string ToString() {
 		if ((_shouldUpdate & ShouldUpdateStatus.Raw) == ShouldUpdateStatus.Raw) {
 			_lastToStringResult = UnescapeSerialize(this);
 			_shouldUpdate &= ~ShouldUpdateStatus.Raw;
@@ -687,14 +689,14 @@ public partial class QueryString<TEncoder>:
 			_dictEnumerator.Dispose();
 		}
 
-		public readonly override string ToString() => $"{Current.Key}={Current.Value}";
+		public override readonly string ToString() => $"{Current.Key}={Current.Value}";
 
-		public readonly override int GetHashCode() => string.GetHashCode(Current.Key + Current.Value, StringComparison.Ordinal);
+		public override readonly int GetHashCode() => string.GetHashCode(Current.Key + Current.Value, StringComparison.Ordinal);
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public readonly bool Equals(Enumerator obj) => this == obj;
 
-		public readonly override bool Equals(object? obj) => false;
+		public override readonly bool Equals(object? obj) => false;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator ==(Enumerator left, Enumerator right) => left.Current.Key == right.Current.Key && left.Current.Value == right.Current.Value ;

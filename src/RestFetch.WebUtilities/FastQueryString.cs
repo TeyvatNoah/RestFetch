@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Runtime.CompilerServices;
 
 using Cysharp.Text;
@@ -6,11 +5,11 @@ using Cysharp.Text;
 namespace RestFetch.WebUtilities;
 
 #pragma warning disable CA1010,CS0659,CA2231 // Generic interface should also be implemented
-public ref partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, IEquatable<FastQueryString>, IDisposable {
+public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, IEquatable<FastQueryString>, ISpanFormattable, IDisposable {
 #pragma warning restore CA1010,CS0659,CA2231 // Generic interface should also be implemented
-	const string TRUE = "1";
+	public const string TRUE = "1";
 
-	const string FALSE = "0";
+	public const string FALSE = "0";
 
 	public string TrueValue = TRUE;
 
@@ -357,6 +356,13 @@ public ref partial struct FastQueryString: IQueryStringSerializer<FastQueryStrin
 		_isFirst = false;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
+		=> _builder.TryCopyTo(destination, out charsWritten);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public string ToString(string? format, IFormatProvider? formatProvider) => _builder.ToString();
+
 	// 不要readonly,避免防御性拷贝
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override string ToString() => _builder.ToString();
@@ -372,9 +378,12 @@ public ref partial struct FastQueryString: IQueryStringSerializer<FastQueryStrin
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string Serialize(FastQueryString qs) => qs.ToString();
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static implicit operator string(FastQueryString qs) => qs.ToString();
+
 	public override int GetHashCode() => ToString().GetHashCode();
 
-	public readonly override bool Equals(object? obj) => false;
+	public override readonly bool Equals(object? obj) => false;
 
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -388,7 +397,7 @@ public ref partial struct FastQueryString: IQueryStringSerializer<FastQueryStrin
 }
 
 #pragma warning disable CA1010,CS0659,CA2231 // Generic interface should also be implemented
-public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQueryString>, IEquatable<FastQueryString<TEncoder>>, IDisposable
+public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQueryString>, IEquatable<FastQueryString<TEncoder>>, ISpanFormattable, IDisposable
 	where TEncoder: IURLEncoder {
 #pragma warning restore CA1010,CS0659,CA2231 // Generic interface should also be implemented
 	public string TrueValue { get; init; } = "true";
@@ -736,6 +745,12 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 		_isFirst = false;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
+		=> _builder.TryCopyTo(destination, out charsWritten);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public string ToString(string? format, IFormatProvider? formatProvider) => _builder.ToString();
 
 	// 不要readonly,避免防御性拷贝
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -751,6 +766,9 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string Serialize(FastQueryString qs) => qs.ToString();
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static implicit operator string(FastQueryString<TEncoder> qs) => qs.ToString();
 
 	public override int GetHashCode() => ToString().GetHashCode();
 

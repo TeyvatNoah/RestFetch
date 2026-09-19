@@ -15,7 +15,7 @@ public interface IURLEncoder {
 		char[] destination = ArrayPool<char>.Shared.Rent(str.Length * 3);
 		Span<char> destSpan = destination;
 		try {
-			var status = UrlEncoder.Default.Encode(str, destSpan, out _, out int len);
+			var status = UrlEncoder.Default.Encode(str, destSpan, out _, out var len);
 			switch (status) {
 				case OperationStatus.Done:
 					return destSpan[..len].ToString();
