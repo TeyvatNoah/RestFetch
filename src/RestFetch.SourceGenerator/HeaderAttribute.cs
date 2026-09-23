@@ -27,8 +27,8 @@ internal sealed class HeaderAttribute: Attribute {
 	// 给string使用
 	public HeaderAttribute(string name) => Name = name;
 
-	// 静态
-	public HeaderAttribute(string name, string value) {
+	// 静态,null用于取消父级header
+	public HeaderAttribute(string name, string? value) {
 		Name = name;
 		Value = value;
 	}

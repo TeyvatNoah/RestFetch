@@ -96,12 +96,12 @@
 		<EmbeddedResource Include="./BaseAddressAttribute.cs" LogicalName="RestFetch.BaseAddressAttribute.cs" />
 		<EmbeddedResource Include="./BeforeSendAttribute.cs" LogicalName="RestFetch.BeforeSendAttribute.cs" />
 		<EmbeddedResource Include="./BodyAttribute.cs" LogicalName="RestFetch.BodyAttribute.cs" />
-		<EmbeddedResource Include="./ErrorFactoryAttribute.cs" LogicalName="RestFetch.ErrorFactoryAttribute.cs" />
+		<EmbeddedResource Include="./ExceptionFactoryAttribute.cs" LogicalName="RestFetch.ExceptionFactoryAttribute.cs" />
 		<EmbeddedResource Include="./HeaderAttribute.cs" LogicalName="RestFetch.HeaderAttribute.cs" />
 		<EmbeddedResource Include="./HttpClientProxyAttribute.cs" LogicalName="RestFetch.HttpClientProxyAttribute.cs" />
 		<EmbeddedResource Include="./HttpMethodAttribute.cs" LogicalName="RestFetch.HttpMethodAttribute.cs" />
 		<EmbeddedResource Include="./IdGeneratorAttribute.cs" LogicalName="RestFetch.IdGeneratorAttribute.cs" />
-		<EmbeddedResource Include="./MetaDataAttribute.cs" LogicalName="RestFetch.MetaDataAttribute.cs" />
+		<EmbeddedResource Include="./MetadataAttribute.cs" LogicalName="RestFetch.MetadataAttribute.cs" />
 		<EmbeddedResource Include="./OnErrorAttribute.cs" LogicalName="RestFetch.OnErrorAttribute.cs" />
 		<EmbeddedResource Include="./OnSuccessAttribute.cs" LogicalName="RestFetch.OnSuccessAttribute.cs" />
 		<EmbeddedResource Include="./ParamAttribute.cs" LogicalName="RestFetch.ParamAttribute.cs" />

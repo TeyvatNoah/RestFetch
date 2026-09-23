@@ -12,28 +12,17 @@ namespace RestFetch;
 	Inherited = true,
 	AllowMultiple = true // 修饰参数不允许多个
 	)]
-public class MetaDataAttribute<T>: Attribute {
+public class MetadataAttribute: Attribute {
 	public string Key = default!;
 
-	public T Value = default!;
+	public string Value = default!;
 
-	public MetaDataAttribute() {}
+	public MetadataAttribute() {}
 
-	public MetaDataAttribute(string key) => Key = key;
+	public MetadataAttribute(string key) => Key = key;
 
-	public MetaDataAttribute(string key, T value) {
+	public MetadataAttribute(string key, string value) {
 		Key = key;
 		Value = value;
 	}
-}
-
-[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute(nameof(RestFetch), "1.0")]
-[global::Microsoft.CodeAnalysis.EmbeddedAttribute]
-public sealed class MetaDataAttribute: MetaDataAttribute<string> {
-	public MetaDataAttribute() {}
-
-	public MetaDataAttribute(string key): base(key) {}
-
-	public MetaDataAttribute(string key, string value): base(key, value) {}
 }

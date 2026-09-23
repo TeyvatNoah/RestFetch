@@ -53,7 +53,10 @@ public sealed class RequestBodySerializer {
 		[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonContent))]
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value, JsonSerializerContext? jsonContext, ref readonly APIInfo<HttpResponseMessage, HttpClientProxy> context, CancellationToken cancellationToken, out object? bufferedData) {
+		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
+			JsonSerializerContext? jsonContext,
+			ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context,
+			CancellationToken cancellationToken, out object? bufferedData) {
 			var isFastPath = jsonContext is not null;
 			bufferedData = null;
 			_FastPathOptions.TypeInfoResolver = jsonContext;
@@ -67,7 +70,10 @@ public sealed class RequestBodySerializer {
 		[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonContent))]
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value, JsonSerializerContext? jsonContext, ref readonly APIInfo<HttpResponseMessage, HttpClientProxy> context, CancellationToken cancellationToken, out object? bufferedData) {
+		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
+		JsonSerializerContext? jsonContext,
+		ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context,
+		CancellationToken cancellationToken, out object? bufferedData) {
 			var isFastPath = jsonContext is not null;
 			_FastPathOptions.TypeInfoResolver = jsonContext;
 			var bytes = JsonSerializer.SerializeToUtf8Bytes(value, isFastPath ? _FastPathOptions : _Options);
@@ -81,7 +87,10 @@ public sealed class RequestBodySerializer {
 	public sealed class Form: IRequestBodySerializer {
 		// NOTE: 仅允许IEnumerable<KeyValuePair<string, string?>>类型
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value, JsonSerializerContext? jsonContext, ref readonly APIInfo<HttpResponseMessage, HttpClientProxy> context, CancellationToken cancellationToken, out object? bufferedData) {
+		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
+			JsonSerializerContext? jsonContext,
+			ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context,
+			CancellationToken cancellationToken, out object? bufferedData) {
 			var str = value is null ? "" : QueryString<FormEncoder>.Serialize((IEnumerable<KeyValuePair<string, string?>>)value);
 			bufferedData = str;
 			return ValueTask.FromResult<HttpContent>(new StringContent(str, Encoding.UTF8, new MediaTypeHeaderValue("application/x-www-form-urlencoded")));

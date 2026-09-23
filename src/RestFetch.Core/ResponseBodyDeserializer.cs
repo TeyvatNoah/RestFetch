@@ -41,7 +41,10 @@ public sealed class ResponseBodyDeserializer {
 			[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 			[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HttpContentJsonExtensions))]
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public static Task<TResponseBody?> Parse<TResponseBody>(HttpResponseMessage resp, ref readonly APIInfo<HttpResponseMessage, HttpClientProxy> context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken) {
+			public static Task<TResponseBody?> Parse<TResponseBody>(HttpResponseMessage resp,
+				ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context,
+				JsonSerializerContext? jsonContext,
+				CancellationToken cancellationToken) {
 				_Options.TypeInfoResolver = jsonContext;
 				return resp.Content.ReadFromJsonAsync<TResponseBody>(_Options, cancellationToken);
 			}

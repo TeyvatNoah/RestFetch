@@ -20,9 +20,9 @@ namespace RestFetch;
 // 但是此类型作为Attr,使用时其实可以知道目标类型U
 // 增加一个泛型参数又显得有点多余,故不对T做泛型约束
 // 交给源生成器做约束
-internal class ErrorFactoryAttribute<TErrorFactory>: Attribute {
+internal class ExceptionFactoryAttribute<TExceptionFactory>: Attribute {
 	// TODO 如果有默认泛型参数就考虑用泛型
-	public readonly Type ErrorFactory = typeof(TErrorFactory);
+	public readonly Type ExceptionFactory = typeof(TExceptionFactory);
 
 	// 执行hook的时候ConfigAwait(false)的参数
 	public bool ConfigAwait = false;
