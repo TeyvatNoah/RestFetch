@@ -2,6 +2,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
+using Microsoft.CodeAnalysis;
+
 namespace RestFetch.SourceGenerator;
 
 public static class Util {
@@ -25,4 +27,8 @@ public static class Util {
 		}
 		return reader.ReadToEnd();
 	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool IsPrimitiveType<T>(TypedConstant arg)
+		=> arg.Kind == TypedConstantKind.Primitive && arg.Value is T;
 }

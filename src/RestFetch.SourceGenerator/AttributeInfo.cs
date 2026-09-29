@@ -14,7 +14,7 @@ public record AttributeInfo (
 	// 命名参数列表
 	EquatableArray<(string, TypedConstant)> NamedArgs,
 	LocationInfo? Location,
-	EquatableArray<DiagnosticInfo> Diagnostics
+	EquatableArray<DiagnosticInfo>? Diagnostics
 );
 
 public sealed record AttributeInfo<TTuple> (
@@ -29,7 +29,7 @@ public sealed record AttributeInfo<TTuple> (
 	// 命名参数列表
 	EquatableArray<(string, TypedConstant)> NamedArgs,
 	LocationInfo? Location,
-	EquatableArray<DiagnosticInfo> Diagnostics
+	EquatableArray<DiagnosticInfo>? Diagnostics
 ): AttributeInfo(
 	Name,
 	FullyQualifiedName,

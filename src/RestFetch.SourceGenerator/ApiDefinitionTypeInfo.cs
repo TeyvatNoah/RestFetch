@@ -9,6 +9,7 @@ namespace RestFetch.SourceGenerator;
 
 public sealed record ApiDefinitionTypeInfo(
 	TypeInfo TypeInfo,
+	bool IsValid,
 	string BaseAddress,
 	string IdGenerator,
 	HookInfo? BeforeSendHook,
@@ -19,7 +20,7 @@ public sealed record ApiDefinitionTypeInfo(
 	HookInfo HttpClientProxy,
 	EquatableArray<KeyValuePairInfo> StaticHeaders,
 	EquatableArray<ApiDefinitionMethodInfo> Methods,
-	EquatableArray<DiagnosticInfo> Diagnostics
+	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
 
 	private static readonly DiagnosticDescriptor HeaderRule0 = new("RestFetch0010",
@@ -57,36 +58,37 @@ public sealed record ApiDefinitionTypeInfo(
 		"OnSuccess<THook>中THook必须实现IOnSuccess或IOnSuccess<TURL, TDisposer, TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
-	public static ApiDefinitionTypeInfo CreateFromSymbol(ITypeSymbol symbol, Compilation compilation) {
-		var typeInfo = TypeInfo.CreateFromSymbol(symbol);
+	public static ApiDefinitionTypeInfo CreateFromSymbol(ITypeSymbol symbol, KnownTypes knownTypes) {
+		var typeInfo = TypeInfo.CreateFromSymbol(symbol, knownTypes, 1);
 		var attrList = symbol.GetAttributes();
-		var baseAddress = GetBaseAddress(attrList, compilation) ?? "";
-		var staticHeaders = GetStaticHeaders(attrList, compilation);
+		var baseAddress = GetBaseAddress(attrList, knownTypes) ?? "";
+		var staticHeaders = GetStaticHeaders(attrList, knownTypes);
 		var validStaticHeaders = staticHeaders
-			.Where(static header => header.Diagnostics.Length == 0)
+			.Where(static header => header.Diagnostics is null)
 			.GroupBy(static header => header.Key, StringComparer.OrdinalIgnoreCase)
 			.Select(static g => g.LastOrDefault());
 			// 去重相同的header,但是允许方法级的覆盖类级
 			// .Distinct(HeaderEqualityComparer.Default);
 		var headerErrors = staticHeaders
-			.Where(static header => header.Diagnostics.Length != 0)
-			.SelectMany(static header => header.Diagnostics);
-		var idGenerator = GetIdGenerator(attrList, compilation) ?? "RestFetch.RequestIdGenerator";
-		var beforeSendHook = GetBeforeSendHook(attrList, compilation);
-		var afterResponseHook = GetAfterResponseHook(attrList, compilation);
-		var exceptionFactory = GetExceptionFactory(attrList, compilation) ?? new(
-			FullyQualifiedName: "RestFetch.DefaultExceptionFactory",
+			.Where(static header => header.Diagnostics is not null)
+			.SelectMany(static header => header.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArraySafe());
+		var idGenerator = GetIdGenerator(attrList, knownTypes) ?? $"{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestIdGenerator";
+		var beforeSendHook = GetBeforeSendHook(attrList, knownTypes);
+		var afterResponseHook = GetAfterResponseHook(attrList, knownTypes);
+		var exceptionFactory = GetExceptionFactory(attrList, knownTypes) ?? new(
+			FullyQualifiedName: $"{RestFetchSourceGenerator.RestFetchNamespaceName}.DefaultExceptionFactory",
 			ConfigAwait: false,
-			Diagnostics: []
+			Diagnostics: null
 		);
-		var httpClientProxy = GetHttpClientProxy(attrList, compilation) ?? new(
-			FullyQualifiedName: "RestFetch.HttpClientProxy",
+		var httpClientProxy = GetHttpClientProxy(attrList, knownTypes) ?? new(
+			FullyQualifiedName: $"{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxy",
 			ConfigAwait: false,
-			Diagnostics: []
+			Diagnostics: null
 		);
-		var onError = GetOnError(attrList, compilation);
-		var onSuccess = GetOnSuccess(attrList, compilation);
+		var onError = GetOnError(attrList, knownTypes);
+		var onSuccess = GetOnSuccess(attrList, knownTypes);
 		var tempApiDefinition = new ApiDefinitionTypeInfo(
+			IsValid: false,
 			TypeInfo: typeInfo,
 			IdGenerator: idGenerator,
 			BaseAddress: baseAddress,
@@ -100,40 +102,43 @@ public sealed record ApiDefinitionTypeInfo(
 			Methods: [],
 			Diagnostics: ImmutableArrayExtension.CombineSafe(
 				headerErrors,
-				beforeSendHook?.Diagnostics.AsImmutableArray(),
-				afterResponseHook?.Diagnostics.AsImmutableArray(),
-				exceptionFactory.Diagnostics.AsImmutableArray(),
-				httpClientProxy.Diagnostics.AsImmutableArray(),
-				onError?.Diagnostics.AsImmutableArray(),
-				onSuccess?.Diagnostics.AsImmutableArray()
+				beforeSendHook?.Diagnostics,
+				afterResponseHook?.Diagnostics,
+				exceptionFactory.Diagnostics,
+				httpClientProxy.Diagnostics,
+				onError?.Diagnostics,
+				onSuccess?.Diagnostics
 			)
 		);
-		var methods = symbol.GetInstanceMethods().Select(item => ApiDefinitionMethodInfo.CreateFromSymbol(item, compilation, tempApiDefinition));
+		var methods = symbol.GetInstanceMethods().Select(item => ApiDefinitionMethodInfo.CreateFromSymbol(item, knownTypes, tempApiDefinition));
 		return tempApiDefinition with {
+			IsValid = methods.All(static m => m.IsValid),
 			Methods = methods.ToImmutableArraySafe(),
-			Diagnostics = tempApiDefinition.Diagnostics.Concat(methods.SelectMany(static m => m.Diagnostics)).ToImmutableArraySafe()
+			Diagnostics = tempApiDefinition.Diagnostics
+				.Concat(methods
+					.SelectMany(static m => m.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArraySafe())).ToImmutableArraySafe()
 		};
 	}
 
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static string? GetBaseAddress(ImmutableArray<AttributeData> attr, Compilation compilation)
+	public static string? GetBaseAddress(ImmutableArray<AttributeData> attr, KnownTypes knownTypes)
 		=> attr
-			.GetAttributesByFullName("RestFetch.BaseAddressAttribute", compilation)
+			.GetAttributesBySymbol(knownTypes.BaseAddress)
 			.SelectMany(static item => item.ConstructorArguments)
 			.Where(Util.IsPrimitiveType<string>)
 			.Select(static item => (string)item.Value!)
 			.FirstOrDefault();
 
 
-	public static IEnumerable<KeyValuePairInfo> GetStaticHeaders(ImmutableArray<AttributeData> attrs, Compilation compilation) {
-		var headerAttrs = attrs.GetAttributesByFullName("RestFetch.HeaderAttribute", compilation);
+	public static IEnumerable<KeyValuePairInfo> GetStaticHeaders(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var headerAttrs = attrs.GetAttributesBySymbol(knownTypes.HeaderAttribute);
 		foreach (var headerAttr in headerAttrs) {
 			if (headerAttr.ConstructorArguments.Length == 2) {
 				yield return new(
 					Key: (string)headerAttr.ConstructorArguments[0].Value!,
 					Value: (string)headerAttr.ConstructorArguments[1].Value!,
-					Diagnostics: []
+					Diagnostics: null
 				);
 			} else {
 				var errLocation = headerAttr.ApplicationSyntaxReference?.GetSyntax().GetLocation();
@@ -147,27 +152,27 @@ public sealed record ApiDefinitionTypeInfo(
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static string? GetIdGenerator(ImmutableArray<AttributeData> attrs, Compilation compilation) {
-		var idAttr = attrs.GetAttributesByFullName("RestFetch.IdGeneratorAttribute`1", compilation)
+	public static string? GetIdGenerator(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var idAttr = attrs.GetAttributesBySymbol(knownTypes.IdGeneratorAttribute)
 			.FirstOrDefault();
 		return idAttr?.AttributeClass?.TypeArguments[0]?.ToDisplayString();
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static HookInfo? GetBeforeSendHook(ImmutableArray<AttributeData> attrs, Compilation compilation) {
-		var beforeSendHookAttr = attrs.GetAttributesByFullName("RestFetch.BeforeSendAttribute`1", compilation).FirstOrDefault();
+	public static HookInfo? GetBeforeSendHook(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var beforeSendHookAttr = attrs.GetAttributesBySymbol(knownTypes.BeforeSendAttribute).FirstOrDefault();
 		if (beforeSendHookAttr is null || beforeSendHookAttr.AttributeClass is null) {
 			return null;
 		}
-		var beforeSendHookInterface = compilation.GetTypeByMetadataName("RestFetch.IBeforeSendHook")!;
-		var beforeSendHookGenericInterface = compilation.GetTypeByMetadataName("RestFetch.IBeforeSendHook`5")!;
+		var beforeSendHookInterface = knownTypes.BeforeSendHookInterface;
+		var beforeSendHookGenericInterface = knownTypes.BeforeSendHookGenericInterface;
 		var targetType = beforeSendHookAttr.AttributeClass.TypeArguments[0];
-		var configAwait = beforeSendHookAttr.NamedArguments.Length > 0 && (bool)beforeSendHookAttr.NamedArguments[0].Value.Value!;
+		var configAwait = !beforeSendHookAttr.NamedArguments.IsEmpty && (bool)beforeSendHookAttr.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(beforeSendHookInterface) || targetType.ImplementsInterface(beforeSendHookGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				ConfigAwait: configAwait,
-				Diagnostics: []
+				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -177,20 +182,20 @@ public sealed record ApiDefinitionTypeInfo(
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static HookInfo? GetAfterResponseHook(ImmutableArray<AttributeData> attrs, Compilation compilation) {
-		var afterResponseAttr = attrs.GetAttributesByFullName("RestFetch.AfterResponseAttribute`1", compilation).FirstOrDefault();
+	public static HookInfo? GetAfterResponseHook(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var afterResponseAttr = attrs.GetAttributesBySymbol(knownTypes.AfterResponseAttribute).FirstOrDefault();
 		if (afterResponseAttr is null || afterResponseAttr.AttributeClass is null) {
 			return null;
 		}
-		var afterResponseHookInterface = compilation.GetTypeByMetadataName("RestFetch.IAfterResponseHook")!;
-		var afterResponseHookGenericInterface = compilation.GetTypeByMetadataName("RestFetch.IAfterResponseHook`4")!;
+		var afterResponseHookInterface = knownTypes.AfterResponseHookInterface;
+		var afterResponseHookGenericInterface = knownTypes.AfterResponseHookGenericInterface;
 		var targetType = afterResponseAttr.AttributeClass.TypeArguments[0];
-		var configAwait = afterResponseAttr.NamedArguments.Length > 0 && (bool)afterResponseAttr.NamedArguments[0].Value.Value!;
+		var configAwait = !afterResponseAttr.NamedArguments.IsEmpty && (bool)afterResponseAttr.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(afterResponseHookInterface) || targetType.ImplementsInterface(afterResponseHookGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				ConfigAwait: configAwait,
-				Diagnostics: []
+				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -200,20 +205,20 @@ public sealed record ApiDefinitionTypeInfo(
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static HookInfo? GetExceptionFactory(ImmutableArray<AttributeData> attrs, Compilation compilation) {
-		var exceptionFactory = attrs.GetAttributesByFullName("RestFetch.ExceptionFactoryAttribute`1", compilation).FirstOrDefault();
+	public static HookInfo? GetExceptionFactory(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var exceptionFactory = attrs.GetAttributesBySymbol(knownTypes.ExceptionFactoryAttribute).FirstOrDefault();
 		if (exceptionFactory is null || exceptionFactory.AttributeClass is null) {
 			return null;
 		}
-		var exceptionFactoryInterface = compilation.GetTypeByMetadataName("RestFetch.IExceptionFactory")!;
-		var exceptionFactoryGenericInterface = compilation.GetTypeByMetadataName("RestFetch.IExceptionFactory`4")!;
+		var exceptionFactoryInterface = knownTypes.ExceptionFactoryInterface;
+		var exceptionFactoryGenericInterface = knownTypes.ExceptionFactoryGenericInterface;
 		var targetType = exceptionFactory.AttributeClass.TypeArguments[0];
-		var configAwait = exceptionFactory.NamedArguments.Length > 0 && (bool)exceptionFactory.NamedArguments[0].Value.Value!;
+		var configAwait = !exceptionFactory.NamedArguments.IsEmpty && (bool)exceptionFactory.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(exceptionFactoryInterface) || targetType.ImplementsInterface(exceptionFactoryGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				ConfigAwait: configAwait,
-				Diagnostics: []
+				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -223,20 +228,20 @@ public sealed record ApiDefinitionTypeInfo(
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static HookInfo? GetHttpClientProxy(ImmutableArray<AttributeData> attrs, Compilation compilation) {
-		var httpClientProxyAttr = attrs.GetAttributesByFullName("RestFetch.HttpClientProxyAttribute`1", compilation).FirstOrDefault();
+	public static HookInfo? GetHttpClientProxy(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var httpClientProxyAttr = attrs.GetAttributesBySymbol(knownTypes.HttpClientProxyAttribute).FirstOrDefault();
 		if (httpClientProxyAttr is null || httpClientProxyAttr.AttributeClass is null) {
 			return null;
 		}
-		var httpClientProxyInterface = compilation.GetTypeByMetadataName("RestFetch.IHttpClientProxy")!;
-		var httpClientProxyGenericInterface = compilation.GetTypeByMetadataName("RestFetch.IHttpClientProxy`4")!;
+		var httpClientProxyInterface = knownTypes.HttpClientProxyInterface;
+		var httpClientProxyGenericInterface = knownTypes.HttpClientProxyGenericInterface;
 		var targetType = httpClientProxyAttr.AttributeClass.TypeArguments[0];
-		var configAwait = httpClientProxyAttr.NamedArguments.Length > 0 && (bool)httpClientProxyAttr.NamedArguments[0].Value.Value!;
+		var configAwait = !httpClientProxyAttr.NamedArguments.IsEmpty && (bool)httpClientProxyAttr.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(httpClientProxyInterface) || targetType.ImplementsInterface(httpClientProxyGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				ConfigAwait: configAwait,
-				Diagnostics: []
+				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -246,20 +251,20 @@ public sealed record ApiDefinitionTypeInfo(
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static HookInfo? GetOnError(ImmutableArray<AttributeData> attrs, Compilation compilation) {
-		var onErrorAttr = attrs.GetAttributesByFullName("RestFetch.OnErrorAttribute`1", compilation).FirstOrDefault();
+	public static HookInfo? GetOnError(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var onErrorAttr = attrs.GetAttributesBySymbol(knownTypes.OnErrorAttribute).FirstOrDefault();
 		if (onErrorAttr is null || onErrorAttr.AttributeClass is null) {
 			return null;
 		}
-		var onErrorInterface = compilation.GetTypeByMetadataName("RestFetch.IOnError")!;
-		var onErrorGenericInterface = compilation.GetTypeByMetadataName("RestFetch.IOnError`4")!;
+		var onErrorInterface = knownTypes.OnErrorInterface;
+		var onErrorGenericInterface = knownTypes.OnSuccessGenericInterface;
 		var targetType = onErrorAttr.AttributeClass.TypeArguments[0];
-		var configAwait = onErrorAttr.NamedArguments.Length > 0 && (bool)onErrorAttr.NamedArguments[0].Value.Value!;
+		var configAwait = !onErrorAttr.NamedArguments.IsEmpty && (bool)onErrorAttr.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(onErrorInterface) || targetType.ImplementsInterface(onErrorGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				ConfigAwait: configAwait,
-				Diagnostics: []
+				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -269,20 +274,20 @@ public sealed record ApiDefinitionTypeInfo(
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static HookInfo? GetOnSuccess(ImmutableArray<AttributeData> attrs, Compilation compilation) {
-		var onSuccessAttr = attrs.GetAttributesByFullName("RestFetch.OnSuccessAttribute`1", compilation).FirstOrDefault();
+	public static HookInfo? GetOnSuccess(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var onSuccessAttr = attrs.GetAttributesBySymbol(knownTypes.OnSuccessAttribute).FirstOrDefault();
 		if (onSuccessAttr is null || onSuccessAttr.AttributeClass is null) {
 			return null;
 		}
-		var onSuccessInterface = compilation.GetTypeByMetadataName("RestFetch.IOnSuccess")!;
-		var onSuccessGenericInterface = compilation.GetTypeByMetadataName("RestFetch.IOnSuccess`4")!;
+		var onSuccessInterface = knownTypes.OnSuccessInterface;
+		var onSuccessGenericInterface = knownTypes.OnSuccessGenericInterface;
 		var targetType = onSuccessAttr.AttributeClass.TypeArguments[0];
-		var configAwait = onSuccessAttr.NamedArguments.Length > 0 && (bool)onSuccessAttr.NamedArguments[0].Value.Value!;
+		var configAwait = !onSuccessAttr.NamedArguments.IsEmpty && (bool)onSuccessAttr.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(onSuccessInterface) || targetType.ImplementsInterface(onSuccessGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				ConfigAwait: configAwait,
-				Diagnostics: []
+				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),

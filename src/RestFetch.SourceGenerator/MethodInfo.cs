@@ -15,6 +15,8 @@ public sealed record MethodInfo(
 	Accessibility DeclaredAccessibility,
 	bool IsAbstract,
 	bool IsAsync,
+	// 根据返回类型推断是否async,这个更准确,因为partial声明部分不允许async关键字
+	bool IsAsyncReturnType,
 	bool IsGenericMethod,
 	bool IsIterator,
 	bool IsOverride,
@@ -39,6 +41,8 @@ public sealed record MethodInfo(
 	bool ReturnsVoid,
 	// 返回类型
 	TypeInfo ReturnType,
+	// 返回类型的完全限定名字符串,封闭类型
+	string ReturnTypeFullyQualifiedName,
 	// 泛型参数可空性,无法使用NullableAnnotation,需要强转byte
 	EquatableArray<byte> TypeArgumentNullableAnnotations,
 	// 泛型实参
@@ -46,9 +50,9 @@ public sealed record MethodInfo(
 	// 泛型形参
 	EquatableArray<TypeInfo> TypeParameters,
 	LocationInfo? Location,
-	EquatableArray<DiagnosticInfo> Diagnostics
+	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
-	public static MethodInfo CreateFromSymbol(IMethodSymbol symbol) {
+	public static MethodInfo CreateFromSymbol(IMethodSymbol symbol, KnownTypes knownTypes) {
 		return new(
 			Arity: symbol.Arity,
 			ContainingTypeName: symbol.ContainingType.Name,
@@ -56,6 +60,7 @@ public sealed record MethodInfo(
 			DeclaredAccessibility: symbol.DeclaredAccessibility,
 			IsAbstract: symbol.IsAbstract,
 			IsAsync: symbol.IsAsync,
+			IsAsyncReturnType: symbol.ReturnType.IsAsyncReturnType(knownTypes),
 			IsGenericMethod: symbol.IsGenericMethod,
 			IsIterator: symbol.IsIterator,
 			IsOverride: symbol.IsOverride,
@@ -67,22 +72,19 @@ public sealed record MethodInfo(
 			Kind: symbol.Kind,
 			MethodKind: symbol.MethodKind,
 			Name: symbol.Name,
-			// TODO
-			Parameters: [],
-			ReturnNullableAnnotation: symbol.ReturnNullableAnnotation,
+			Parameters: symbol.Parameters.Select(e => ParameterInfo.CreateFromSymbol(e, knownTypes)).ToImmutableArraySafe(),
 			ReturnsByRef: symbol.ReturnsByRef,
 			ReturnsByRefReadonly: symbol.ReturnsByRefReadonly,
 			ReturnsVoid: symbol.ReturnsVoid,
-			ReturnType: TypeInfo.CreateFromSymbol(symbol.ReturnType),
+			ReturnType: TypeInfo.CreateFromSymbolWithoutMethods(symbol.ReturnType, knownTypes),
+			ReturnNullableAnnotation: symbol.ReturnNullableAnnotation,
+			ReturnTypeFullyQualifiedName: symbol.ReturnType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+			TypeArgumentNullableAnnotations: symbol.TypeArgumentNullableAnnotations.Select(static e => (byte)e).ToImmutableArraySafe(),
+			TypeArguments: symbol.TypeArguments.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArraySafe(),
+			TypeParameters: symbol.TypeParameters.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArraySafe(),
+			Location: symbol.Locations.IsEmpty ? null : new(symbol.Locations[0]),
 			// TODO
-			TypeArgumentNullableAnnotations: [],
-			// TODO
-			TypeArguments: [],
-			// TODO
-			TypeParameters: [],
-			Location: symbol.Locations[0] is null ? null : new(symbol.Locations[0]),
-			// TODO
-			Diagnostics: []
+			Diagnostics: null
 		);
 	}
 }

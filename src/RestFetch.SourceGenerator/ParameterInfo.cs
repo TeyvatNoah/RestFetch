@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 using Microsoft.CodeAnalysis;
@@ -30,5 +32,25 @@ public sealed record ParameterInfo(
 	// 参数类型
 	TypeInfo Type,
 	LocationInfo? Location,
-	EquatableArray<DiagnosticInfo> Diagnostics
-);
+	EquatableArray<DiagnosticInfo>? Diagnostics
+) {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static ParameterInfo CreateFromSymbol(IParameterSymbol symbol, KnownTypes knownTypes)
+		=> new(
+			Name: symbol.Name,
+			ExplicitDefaultValue: symbol.HasExplicitDefaultValue ? symbol.ExplicitDefaultValue?.ToString() ?? "null" : "null",
+			HasExplicitDefaultValue: symbol.HasExplicitDefaultValue,
+			IsDiscard: symbol.IsDiscard,
+			IsOptional: symbol.IsOptional,
+			IsParams: symbol.IsParams,
+			IsParamsArray: symbol.IsParamsArray,
+			NullableAnnotation: symbol.NullableAnnotation,
+			Ordinal: symbol.Ordinal,
+			RefKind: symbol.RefKind,
+			ScopedKind: symbol.ScopedKind,
+			Type: TypeInfo.CreateFromSymbolWithoutMethods(symbol.Type, knownTypes),
+			Location: new(symbol.Locations.FirstOrDefault() ?? Microsoft.CodeAnalysis.Location.None),
+			// TODO
+			Diagnostics: null
+		);
+}

@@ -52,11 +52,12 @@ public sealed class QueryString:
 public partial class QueryString<TEncoder>:
 	IQueryStringConverter<QueryString<TEncoder>>,
 	// for internal
+	IQueryStringSerializer<FastQueryString<TEncoder>>,
+	IQueryStringSerializer<FastQueryString>,
 	IAliasQueryStringSerializer<FastQueryString<TEncoder>>,
 	IAliasQueryStringSerializer<FastQueryString>,
 	IAliasQueryStringSerializer<QueryString<TEncoder>>
-	where TEncoder: IURLEncoder
-	{
+	where TEncoder: IURLEncoder {
 	public const string Separator = "&";
 
 	public const string Eq = "=";
@@ -183,6 +184,13 @@ public partial class QueryString<TEncoder>:
 			return sb.ToString();
 		}
 	}
+
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(FastQueryString value) => value.ToString();
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string Serialize(FastQueryString<TEncoder> value) => value.ToString();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string Serialize(string _, FastQueryString value) => value.ToString();

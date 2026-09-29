@@ -13,9 +13,9 @@ namespace RestFetch;
 	AllowMultiple = true // 修饰参数不允许多个
 	)]
 public class MetadataAttribute: Attribute {
-	public string Key = default!;
+	public readonly string Key = default!;
 
-	public string Value = default!;
+	public readonly string Value = default!;
 
 	public MetadataAttribute() {}
 

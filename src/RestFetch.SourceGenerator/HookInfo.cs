@@ -2,8 +2,9 @@ using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 namespace RestFetch.SourceGenerator;
 
-public sealed record HookInfo(
+public readonly record struct HookInfo(
 	// 完全限定类名,不带global::
 	string FullyQualifiedName,
-	EquatableArray<DiagnosticInfo> Diagnostics
+	bool ConfigAwait,
+	EquatableArray<DiagnosticInfo>? Diagnostics
 );
