@@ -173,16 +173,20 @@ public sealed record ApiDefinitionMethodInfo(
 		var responseBodyDeserializerInterface = knownTypes.ResponseBodyDeserializer;
 		var responseBOdyDeserializerGenericInterface = knownTypes.ResponseBodyGenericDeserializer;
 		var targetType = responseBodyDeserializer.AttributeClass.TypeArguments[0];
-		var configAwait = !responseBodyDeserializer.NamedArguments.IsEmpty && (bool)responseBodyDeserializer.NamedArguments[0].Value.Value!;
+		var configureAwait = !responseBodyDeserializer.NamedArguments.IsEmpty && (bool)responseBodyDeserializer.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(responseBodyDeserializerInterface) || targetType.ImplementsInterface(responseBOdyDeserializerGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule6, new(responseBodyDeserializer.GetTypeArgumentLocation()), null)]
 			);
 	}

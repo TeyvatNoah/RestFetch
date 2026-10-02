@@ -5,7 +5,7 @@ public interface IOnSuccess<TURL, TDisposer, TResponse, TProxy>
 	where TDisposer: IDisposer<TURL>
 	where TResponse: IDisposable
 	where TProxy: IHttpClientProxy<TURL, TDisposer, TResponse, TProxy> {
-	static abstract Task OnSuccess<TRequestBodyContent>(TRequestBodyContent? body, ref readonly APIInfo<TURL, TDisposer, TResponse, TProxy> context, CancellationToken token);
+	static abstract Task OnSuccess<TRequestBodyContent>(TRequestBodyContent? body, ref readonly APIContext<TURL, TDisposer, TResponse, TProxy> context, CancellationToken token);
 }
 
 public interface IOnSuccess: IOnSuccess<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy>;

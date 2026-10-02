@@ -1,15 +1,17 @@
+using System.Runtime.CompilerServices;
+
 namespace RestFetch;
 
 
-public struct APIInfo<TURL, TDisposer, TResponse, TProxy>(
+public struct APIContext<TURL, TDisposer, TResponse, TProxy>(
 	RequestId id,
 	TProxy client,
 	string methodName,
 	string className,
 	string fullName,
 	HttpMethod httpMethod,
-	object? options,
-	Dictionary<string, object>? metaData
+	// object? options,
+	Dictionary<string, object>? metadata
 	) : IDisposable
 	where TURL: IURL
 	where TDisposer: IDisposer<TURL>
@@ -28,11 +30,10 @@ public struct APIInfo<TURL, TDisposer, TResponse, TProxy>(
 	// HTTP Method
 	public readonly HttpMethod HttpMethod = httpMethod;
 	// TODO RestFetch选项
-	public readonly object? Options = options;
+	// public readonly object? Options = options;
 	// TODO metadata
-	public readonly Dictionary<string, object>? MetaData = metaData;
+	public readonly Dictionary<string, object>? Metadata = metadata;
 
-	public void Dispose() {
-		TDisposer.Dispose(ref URLProxy);
-	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public void Dispose() => TDisposer.Dispose(ref URLProxy);
 }

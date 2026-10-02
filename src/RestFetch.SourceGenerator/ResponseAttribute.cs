@@ -24,6 +24,6 @@ internal class ResponseAttribute<TDeserializer>: Attribute {
 	// TODO 如果有默认泛型参数就考虑用泛型
 	public readonly Type Deserializer = typeof(TDeserializer);
 
-	// 执行hook的时候ConfigAwait(false)的参数
-	public bool ConfigAwait = false;
+	// 执行hook的时候ConfigureAwait(false)的参数
+	public bool ConfigureAwait = false;
 }

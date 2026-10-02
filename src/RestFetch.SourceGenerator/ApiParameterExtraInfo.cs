@@ -72,6 +72,10 @@ public record ApiParameterExtraInfo(
 		"错误的QueryString参数类型",
 		"默认QueryString序列化器仅支持QueryString,FastQueryString,以及基本类型及其IEnumerable<primitive>或IEnumerable<KeyValuePair<string, primitive>>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
+	public static readonly DiagnosticDescriptor ParameterRule15 = new("RestFetch0065",
+		"Cancellation参数不能为null",
+		"Cancellation参数不能为null",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
 	// public static readonly Dictionary<string, ApiParameterKind> ParamAttrsMap = new() {
 	// 	{ "None", ApiParameterKind.None },
 	// 	{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.BodyAttribute", ApiParameterKind.Body },
@@ -118,16 +122,26 @@ public record ApiParameterExtraInfo(
 		} else if (paramAttrs.Length == 0) {
 			var cancellationTokenType = knownTypes.CancellationToken;
 			var originalType = symbol.Type.GetTFromNullable();
-			return SymbolEqualityComparer.Default.Equals(originalType, cancellationTokenType)
-				? new CancellationTokenParameter(
-				IsValid: true,
-				Diagnostics: null
-			)
-				: new ApiParameterExtraInfo(
-				Kind: ApiParameterKind.None,
-				IsValid: false,
-				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new DiagnosticInfo(ParameterRule1, new(symbol.Locations.FirstOrDefault() ?? Location.None), null)]
-			);
+			if (originalType.InheritsFrom(cancellationTokenType)) {
+				if (symbol.Type.IsNullable()) {
+					return new ApiParameterExtraInfo(
+						Kind: ApiParameterKind.None,
+						IsValid: false,
+						Diagnostics: (ImmutableArray<DiagnosticInfo>)[new DiagnosticInfo(ParameterRule15, new(symbol.Locations.FirstOrDefault() ?? Location.None), null)]
+					);
+				} else {
+					return new CancellationTokenParameter(
+						IsValid: true,
+						Diagnostics: null
+					);
+				}
+			} else {
+				return new ApiParameterExtraInfo(
+					Kind: ApiParameterKind.None,
+					IsValid: false,
+					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new DiagnosticInfo(ParameterRule1, new(symbol.Locations.FirstOrDefault() ?? Location.None), null)]
+				);
+			}
 		} else {
 			return CreateInstanceInternal(paramAttrs[0], symbol, knownTypes);
 		}
@@ -135,13 +149,13 @@ public record ApiParameterExtraInfo(
 	private static ApiParameterExtraInfo CreateInstanceInternal(AttributeData attr, IParameterSymbol parameterSymbol, KnownTypes knownTypes) {
 		var attrTypeName = attr.AttributeClass!.MetadataName;
 		if (attrTypeName == "BodyAttribute") {
-			var configAwait = false;
+			var configureAwait = false;
 			// TODO 确定类型
 			object? jsonContext = null;
 			foreach (var item in attr.NamedArguments) {
 				// var (key, value) = item;
-				if (item.Key == "ConfigAwait") {
-					configAwait = (bool)item.Value.Value!;
+				if (item.Key == "ConfigureAwait") {
+					configureAwait = (bool)item.Value.Value!;
 				} else if (item.Key == "JsonContext") {
 					// TODO 确定类型
 					jsonContext = item.Value.Value;
@@ -154,12 +168,14 @@ public record ApiParameterExtraInfo(
 			// TODO 检查参数类型是否是默认序列化器支持的
 			return new BodyParameter(
 				IsValid: true,
-				ConfigAwait: configAwait,
+				ConfigureAwait: configureAwait,
 				// TODO 确定类型
 				JsonContext: jsonContext?.ToString(),
 				Serializer: new(
-					ConfigAwait: configAwait,
-					FullyQualifiedName: $"{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Json",
+					ConfigureAwait: configureAwait,
+					FullyQualifiedName: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Json",
+					FullyQualifiedNameWithGlobal: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Json",
+				TypeArguments: null,
 					Diagnostics: null
 				),
 				Diagnostics: null
@@ -173,13 +189,13 @@ public record ApiParameterExtraInfo(
 			|| serializerTypeSymbol.ImplementsInterface(iRequestBodySerializerGenericSymbol1)
 			|| serializerTypeSymbol.ImplementsInterface(iRequestBodySerializerGenericSymbol2)
 			) {
-				var configAwait = false;
+				var configureAwait = false;
 				// TODO 确定类型
 				object? jsonContext = null;
 				foreach (var item in attr.NamedArguments) {
 					// var (key, value) = item;
-					if (item.Key == "ConfigAwait") {
-						configAwait = (bool)item.Value.Value!;
+					if (item.Key == "ConfigureAwait") {
+						configureAwait = (bool)item.Value.Value!;
 					} else if (item.Key == "JsonContext") {
 						// TODO 确定类型
 						jsonContext = item.Value.Value;
@@ -191,12 +207,14 @@ public record ApiParameterExtraInfo(
 				}
 				return new BodyParameter(
 					IsValid: true,
-					ConfigAwait: configAwait,
+					ConfigureAwait: configureAwait,
 					// TODO 确定类型
 					JsonContext: jsonContext?.ToString(),
 					Serializer: new(
-						ConfigAwait: configAwait,
+						ConfigureAwait: configureAwait,
 						FullyQualifiedName: serializerTypeSymbol.ToDisplayString(),
+						FullyQualifiedNameWithGlobal: serializerTypeSymbol.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+						TypeArguments: null,
 						Diagnostics: null
 					),
 					Diagnostics: null
@@ -227,7 +245,9 @@ public record ApiParameterExtraInfo(
 				IsValid: true,
 				Serializer: new(
 					FullyQualifiedName: "RestFetch.ParamSerializer",
-					ConfigAwait: false,
+					FullyQualifiedNameWithGlobal: "global::RestFetch.ParamSerializer",
+					ConfigureAwait: false,
+					TypeArguments: null,
 					Diagnostics: null
 				),
 				SerializerInterfaceMetadataNames: (ImmutableArray<string>)["IParamSerializer`2", "IParamEncodeSerializer`2"],
@@ -277,7 +297,9 @@ public record ApiParameterExtraInfo(
 				IsValid: true,
 				Serializer: new(
 					FullyQualifiedName: serializerTypeSymbol.ToDisplayString(),
-					ConfigAwait: false,
+					FullyQualifiedNameWithGlobal: serializerTypeSymbol.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+					ConfigureAwait: false,
+					TypeArguments: null,
 					Diagnostics: null
 				),
 				SerializerInterfaceMetadataNames: interfaceList.ToImmutableArraySafe(),
@@ -317,7 +339,9 @@ public record ApiParameterExtraInfo(
 					IsValid: true,
 					Serializer: new(
 						FullyQualifiedName: "RestFetch.WebUtilities.QueryString",
-						ConfigAwait: false,
+						FullyQualifiedNameWithGlobal: "global::RestFetch.WebUtilities.QueryString",
+						ConfigureAwait: false,
+						TypeArguments: null,
 						Diagnostics: null
 					),
 					SerializerInterfaceMetadataNames: (ImmutableArray<string>)["IQueryStringSerializer", "IQueryStringSerializer`1", "IAliasQueryStringSerializer`1"],
@@ -371,7 +395,9 @@ public record ApiParameterExtraInfo(
 				IsValid: true,
 				Serializer: new(
 					FullyQualifiedName: serializerTypeSymbol.ToDisplayString(),
-					ConfigAwait: false,
+					FullyQualifiedNameWithGlobal: serializerTypeSymbol.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+					ConfigureAwait: false,
+					TypeArguments: null,
 					Diagnostics: null
 				),
 				SerializerInterfaceMetadataNames: interfaceList.ToImmutableArraySafe(),
@@ -510,7 +536,7 @@ public sealed record BodyParameter(
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
 
-	bool ConfigAwait,
+	bool ConfigureAwait,
 	string? JsonContext,
 	HookInfo Serializer
 ): ApiParameterExtraInfo(

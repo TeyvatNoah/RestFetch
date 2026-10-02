@@ -12,6 +12,11 @@ public sealed record ApiDefinitionTypeInfo(
 	bool IsValid,
 	string BaseAddress,
 	string IdGenerator,
+	string TURL,
+	string TDisposer,
+	string TResponse,
+	string TProxy,
+	string TRequestBodyContent,
 	HookInfo? BeforeSendHook,
 	HookInfo? AfterResponseHook,
 	HookInfo? OnError,
@@ -22,6 +27,11 @@ public sealed record ApiDefinitionTypeInfo(
 	EquatableArray<ApiDefinitionMethodInfo> Methods,
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
+	private static string TURLName = "global::RestFetch.URLProxy";
+	private static string TDisposerName = "global::RestFetch.URLDisposer";
+	private static string TResponseName = "global::System.Net.Http.HttpResponseMessage";
+	private static string TProxyName = "global::RestFetch.HttpClientProxy";
+	private static string TRequestBodyContentName = "global::System.Net.Http.HttpResponseMessage";
 
 	private static readonly DiagnosticDescriptor HeaderRule0 = new("RestFetch0010",
 		"错误的Header构造函数",
@@ -72,22 +82,36 @@ public sealed record ApiDefinitionTypeInfo(
 		var headerErrors = staticHeaders
 			.Where(static header => header.Diagnostics is not null)
 			.SelectMany(static header => header.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArraySafe());
-		var idGenerator = GetIdGenerator(attrList, knownTypes) ?? $"{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestIdGenerator";
+		var idGenerator = GetIdGenerator(attrList, knownTypes) ?? $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestIdGenerator";
 		var beforeSendHook = GetBeforeSendHook(attrList, knownTypes);
 		var afterResponseHook = GetAfterResponseHook(attrList, knownTypes);
 		var exceptionFactory = GetExceptionFactory(attrList, knownTypes) ?? new(
-			FullyQualifiedName: $"{RestFetchSourceGenerator.RestFetchNamespaceName}.DefaultExceptionFactory",
-			ConfigAwait: false,
+			FullyQualifiedName: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.DefaultExceptionFactory",
+			FullyQualifiedNameWithGlobal: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.DefaultExceptionFactory",
+			ConfigureAwait: false,
+			TypeArguments: null,
 			Diagnostics: null
 		);
 		var httpClientProxy = GetHttpClientProxy(attrList, knownTypes) ?? new(
-			FullyQualifiedName: $"{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxy",
-			ConfigAwait: false,
+			FullyQualifiedName: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxy",
+			FullyQualifiedNameWithGlobal: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxy",
+			ConfigureAwait: false,
+			TypeArguments: new string[] {
+				TURLName,
+				TDisposerName,
+				TResponseName,
+				TProxyName
+			}.ToImmutableArraySafe(),
 			Diagnostics: null
 		);
 		var onError = GetOnError(attrList, knownTypes);
 		var onSuccess = GetOnSuccess(attrList, knownTypes);
 		var tempApiDefinition = new ApiDefinitionTypeInfo(
+			TURL: httpClientProxy.TypeArguments?[0] ?? TURLName,
+			TDisposer: httpClientProxy.TypeArguments?[1] ?? TDisposerName,
+			TResponse: httpClientProxy.TypeArguments?[2] ?? TResponseName,
+			TProxy: httpClientProxy.TypeArguments?[3] ?? TProxyName,
+			TRequestBodyContent: beforeSendHook?.TypeArguments?[2] ?? TRequestBodyContentName,
 			IsValid: false,
 			TypeInfo: typeInfo,
 			IdGenerator: idGenerator,
@@ -155,7 +179,7 @@ public sealed record ApiDefinitionTypeInfo(
 	public static string? GetIdGenerator(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
 		var idAttr = attrs.GetAttributesBySymbol(knownTypes.IdGeneratorAttribute)
 			.FirstOrDefault();
-		return idAttr?.AttributeClass?.TypeArguments[0]?.ToDisplayString();
+		return idAttr?.AttributeClass?.TypeArguments[0]?.ToDisplayString(TypeInfo.FullyQualifiedFormat);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -167,18 +191,27 @@ public sealed record ApiDefinitionTypeInfo(
 		var beforeSendHookInterface = knownTypes.BeforeSendHookInterface;
 		var beforeSendHookGenericInterface = knownTypes.BeforeSendHookGenericInterface;
 		var targetType = beforeSendHookAttr.AttributeClass.TypeArguments[0];
-		var configAwait = !beforeSendHookAttr.NamedArguments.IsEmpty && (bool)beforeSendHookAttr.NamedArguments[0].Value.Value!;
-		return targetType.ImplementsInterface(beforeSendHookInterface) || targetType.ImplementsInterface(beforeSendHookGenericInterface)
-			? new(
+		var configureAwait = !beforeSendHookAttr.NamedArguments.IsEmpty && (bool)beforeSendHookAttr.NamedArguments[0].Value.Value!;
+
+		if (targetType.ImplementsInterface(beforeSendHookInterface) || targetType.ImplementsInterface(beforeSendHookGenericInterface)) {
+			var beforeSendHookGenericInterfaceImpl = targetType.GetInterface(beforeSendHookGenericInterface);
+			var typeArguments = beforeSendHookGenericInterfaceImpl!.TypeArguments.Select(static t => t.ToDisplayString(RestFetch.SourceGenerator.TypeInfo.FullyQualifiedFormat));
+			return new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: typeArguments.ToImmutableArraySafe(),
 				Diagnostics: null
-			)
-			: new(
+			);
+		} else {
+			return new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule0, new(beforeSendHookAttr.GetTypeArgumentLocation()), null)]
 			);
+		}
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -190,16 +223,20 @@ public sealed record ApiDefinitionTypeInfo(
 		var afterResponseHookInterface = knownTypes.AfterResponseHookInterface;
 		var afterResponseHookGenericInterface = knownTypes.AfterResponseHookGenericInterface;
 		var targetType = afterResponseAttr.AttributeClass.TypeArguments[0];
-		var configAwait = !afterResponseAttr.NamedArguments.IsEmpty && (bool)afterResponseAttr.NamedArguments[0].Value.Value!;
+		var configureAwait = !afterResponseAttr.NamedArguments.IsEmpty && (bool)afterResponseAttr.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(afterResponseHookInterface) || targetType.ImplementsInterface(afterResponseHookGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule1, new(afterResponseAttr.GetTypeArgumentLocation()), null)]
 			);
 	}
@@ -213,16 +250,20 @@ public sealed record ApiDefinitionTypeInfo(
 		var exceptionFactoryInterface = knownTypes.ExceptionFactoryInterface;
 		var exceptionFactoryGenericInterface = knownTypes.ExceptionFactoryGenericInterface;
 		var targetType = exceptionFactory.AttributeClass.TypeArguments[0];
-		var configAwait = !exceptionFactory.NamedArguments.IsEmpty && (bool)exceptionFactory.NamedArguments[0].Value.Value!;
+		var configureAwait = !exceptionFactory.NamedArguments.IsEmpty && (bool)exceptionFactory.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(exceptionFactoryInterface) || targetType.ImplementsInterface(exceptionFactoryGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule2, new(exceptionFactory.GetTypeArgumentLocation()), null)]
 			);
 	}
@@ -236,18 +277,30 @@ public sealed record ApiDefinitionTypeInfo(
 		var httpClientProxyInterface = knownTypes.HttpClientProxyInterface;
 		var httpClientProxyGenericInterface = knownTypes.HttpClientProxyGenericInterface;
 		var targetType = httpClientProxyAttr.AttributeClass.TypeArguments[0];
-		var configAwait = !httpClientProxyAttr.NamedArguments.IsEmpty && (bool)httpClientProxyAttr.NamedArguments[0].Value.Value!;
-		return targetType.ImplementsInterface(httpClientProxyInterface) || targetType.ImplementsInterface(httpClientProxyGenericInterface)
-			? new(
+		var configureAwait = !httpClientProxyAttr.NamedArguments.IsEmpty && (bool)httpClientProxyAttr.NamedArguments[0].Value.Value!;
+
+		if (targetType.ImplementsInterface(httpClientProxyInterface) || targetType.ImplementsInterface(httpClientProxyGenericInterface)) {
+			var httpClientProxyGenericInterfaceImpl = targetType.GetInterface(httpClientProxyGenericInterface);
+			var typeArguments = httpClientProxyGenericInterfaceImpl!.TypeArguments.Select(static t => t.ToDisplayString(RestFetch.SourceGenerator.TypeInfo.FullyQualifiedFormat));
+			// foreach (var type in httpClientProxyGenericInterfaceImpl!.TypeArguments) {
+			// 	var t = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(type, knownTypes);
+			// }
+			return new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: typeArguments.ToImmutableArraySafe(),
 				Diagnostics: null
-			)
-			: new(
+			);
+		} else {
+			return new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule3, new(httpClientProxyAttr.GetTypeArgumentLocation()), null)]
 			);
+		}
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -259,16 +312,20 @@ public sealed record ApiDefinitionTypeInfo(
 		var onErrorInterface = knownTypes.OnErrorInterface;
 		var onErrorGenericInterface = knownTypes.OnSuccessGenericInterface;
 		var targetType = onErrorAttr.AttributeClass.TypeArguments[0];
-		var configAwait = !onErrorAttr.NamedArguments.IsEmpty && (bool)onErrorAttr.NamedArguments[0].Value.Value!;
+		var configureAwait = !onErrorAttr.NamedArguments.IsEmpty && (bool)onErrorAttr.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(onErrorInterface) || targetType.ImplementsInterface(onErrorGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule4, new(onErrorAttr.GetTypeArgumentLocation()), null)]
 			);
 	}
@@ -282,16 +339,20 @@ public sealed record ApiDefinitionTypeInfo(
 		var onSuccessInterface = knownTypes.OnSuccessInterface;
 		var onSuccessGenericInterface = knownTypes.OnSuccessGenericInterface;
 		var targetType = onSuccessAttr.AttributeClass.TypeArguments[0];
-		var configAwait = !onSuccessAttr.NamedArguments.IsEmpty && (bool)onSuccessAttr.NamedArguments[0].Value.Value!;
+		var configureAwait = !onSuccessAttr.NamedArguments.IsEmpty && (bool)onSuccessAttr.NamedArguments[0].Value.Value!;
 		return targetType.ImplementsInterface(onSuccessInterface) || targetType.ImplementsInterface(onSuccessGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: null
 			)
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
-				ConfigAwait: configAwait,
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule5, new(onSuccessAttr.GetTypeArgumentLocation()), null)]
 			);
 	}

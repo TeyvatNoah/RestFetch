@@ -5,7 +5,16 @@ using Microsoft.CodeAnalysis;
 namespace RestFetch.SourceGenerator;
 
 public static class ITypeSymbolExtension {
-	public static bool ImplementsInterface(this ITypeSymbol self, INamedTypeSymbol? interfaceSymbol) {
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static bool IsMatch(ITypeSymbol current, INamedTypeSymbol target) {
+		var currentDefinition = current is INamedTypeSymbol { IsGenericType: true } named
+		? named.OriginalDefinition
+		: current;
+		return SymbolEqualityComparer.Default.Equals(currentDefinition, target);
+	}
+
+	public static bool ImplementsInterface(this ITypeSymbol? self, INamedTypeSymbol? interfaceSymbol) {
 		if (self is null || interfaceSymbol is null) return false;
 
 		// 提取其开放泛型
@@ -24,15 +33,29 @@ public static class ITypeSymbolExtension {
 		}
 
 		return false;
-
-		static bool IsMatch(ITypeSymbol current, INamedTypeSymbol target) {
-			var currentDefinition = current is INamedTypeSymbol { IsGenericType: true } named
-			? named.OriginalDefinition
-			: current;
-
-			return SymbolEqualityComparer.Default.Equals(currentDefinition, target);
-		}
 	}
+
+	public static INamedTypeSymbol? GetInterface(this ITypeSymbol? self, INamedTypeSymbol? interfaceSymbol) {
+		if (self is null || interfaceSymbol is null) return null;
+
+		// 提取其开放泛型
+		var targetDefinition = interfaceSymbol.IsGenericType
+		? interfaceSymbol.OriginalDefinition
+		: interfaceSymbol;
+
+		if (IsMatch(self, targetDefinition)) {
+			return (INamedTypeSymbol)self;
+		}
+
+		foreach (var iface in self.AllInterfaces) {
+			if (IsMatch(iface, targetDefinition)) {
+				return iface;
+			}
+		}
+
+		return null;
+	}
+
 	public static bool InheritsFrom(this ITypeSymbol? symbol, INamedTypeSymbol? baseTypeSymbol) {
 		if (symbol is null || baseTypeSymbol is null) return false;
 

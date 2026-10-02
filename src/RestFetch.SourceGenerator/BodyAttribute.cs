@@ -24,8 +24,8 @@ internal class BodyAttribute<TSerializer>: Attribute {
 	// TODO 如果有默认泛型参数就考虑用泛型
 	public readonly Type Serializer = typeof(TSerializer);
 
-	// 执行hook的时候ConfigAwait(false)的参数
-	public bool ConfigAwait = false;
+	// 执行hook的时候ConfigureAwait(false)的参数
+	public bool ConfigureAwait = false;
 
 	// TODO 需要源生成器检查类型是JsonSerializeContext
 	public Type? JsonContext;

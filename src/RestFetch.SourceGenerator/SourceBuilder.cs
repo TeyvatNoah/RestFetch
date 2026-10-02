@@ -47,7 +47,7 @@ public sealed class SourceBuilder: IDisposable {
 		}
 		Append("namespace ", true)
 		.Append(ns.FullyQualifiedName)
-		.Append(";\n");
+		.Append(";\n\n");
 		return this;
 	}
 
@@ -66,6 +66,20 @@ public sealed class SourceBuilder: IDisposable {
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public SourceBuilder CreateUsing(string? ns, bool global = false) {
+		if (ns is null) {
+			return this;
+		}
+		if (global) {
+			Append("global ", true);
+		}
+		Append("using ", !global)
+		.Append(ns)
+		.Append(";\n");
+		return this;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public SourceBuilder CreateIndent(Action<SourceBuilder>? fillContent) {
 		StringBuilder.AppendLine();
 		++_IndentLevel;
@@ -76,8 +90,8 @@ public sealed class SourceBuilder: IDisposable {
 	}
 
 	// typeName给interface生成对应类型时指定类型名
-	public SourceBuilder CreateType(string ns, Version version, TypeInfo type, Action<SourceBuilder>? fillContent, string? typeName = null) {
-		static void AppendTypeHeader(SourceBuilder sb, string ns, Version version, TypeInfo type, string? typeName) {
+	public SourceBuilder CreateType(string ns, Version version, TypeInfo type, Action<SourceBuilder>? fillContent, string? typeName = null, string? iface = null) {
+		static void AppendTypeHeader(SourceBuilder sb, string ns, Version version, TypeInfo type, string? typeName, string? @interface) {
 			sb.AppendLine("[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]")
 			.Append($@"[global::System.CodeDom.Compiler.GeneratedCodeAttribute(""", true)
 			.Append(ns)
@@ -142,31 +156,43 @@ public sealed class SourceBuilder: IDisposable {
 					sb.StringBuilder.AppendJoin(',', type.TypeParameters.Select(static t => t.Name));
 					sb.Append('>');
 				}
-				sb.Append(": ").Append(type.FullyQualifiedNameWithGlobalAndWhereClauses);
+				sb.Append(": ");
+				if (@interface is not null) {
+					sb.Append(@interface).Append(", ");
+				}
+				sb.Append(type.FullyQualifiedNameWithGlobalAndWhereClauses);
 				// if (!string.IsNullOrEmpty(type.WhereClauses)) {
 				// 	sb.Append('\n').Append(type.WhereClauses);
 				// }
 			} else if (type.IsGenericType) {
 				sb.Append(type.MinimallyQualifiedName);
+				if (@interface is not null) {
+					sb.Append(": ")
+					.Append(@interface);
+				}
 			} else {
 				sb.Append(type.Name);
+				if (@interface is not null) {
+					sb.Append(": ")
+					.Append(@interface);
+				}
 			}
 
 			sb.Append(" {");
 		}
 
 		if (type.ContainingType is null) {
-			AppendTypeHeader(this, ns, version, type, typeName);
+			AppendTypeHeader(this, ns, version, type, typeName, iface);
 			fillContent?.Invoke(this);
-			Append('}', true);
+			AppendLine('}');
 			return this;
 		} else {
 			return CreateType(ns, version, type.ContainingType,
 				sb => sb.CreateIndent(sb => {
-					AppendTypeHeader(sb, ns, version, type, typeName);
+					AppendTypeHeader(sb, ns, version, type, typeName, iface);
 					fillContent?.Invoke(sb);
 					sb.AppendLine('}');
-			}), null);
+			}), null, null);
 		}
 	}
 
@@ -281,13 +307,17 @@ public sealed class SourceBuilder: IDisposable {
 				// }
 				innerSb.Append(' ');
 				innerSb.Append(param.Name);
+				if (param.HasExplicitDefaultValue) {
+					innerSb.Append(" = ");
+					innerSb.Append(param.ExplicitDefaultValue);
+				}
 				return innerSb.ToString();
 			}).ToArray());
 			Append(") ");
 
 			Append('{');
 			fillContent?.Invoke(this);
-			AppendLine('}');
+			AppendLine("}\n");
 			return this;
 	}
 

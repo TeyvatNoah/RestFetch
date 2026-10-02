@@ -38,7 +38,7 @@ public sealed record ParameterInfo(
 	public static ParameterInfo CreateFromSymbol(IParameterSymbol symbol, KnownTypes knownTypes)
 		=> new(
 			Name: symbol.Name,
-			ExplicitDefaultValue: symbol.HasExplicitDefaultValue ? symbol.ExplicitDefaultValue?.ToString() ?? "null" : "null",
+			ExplicitDefaultValue: symbol.HasExplicitDefaultValue ? symbol.ExplicitDefaultValue?.ToString() ?? "default" : "null",
 			HasExplicitDefaultValue: symbol.HasExplicitDefaultValue,
 			IsDiscard: symbol.IsDiscard,
 			IsOptional: symbol.IsOptional,

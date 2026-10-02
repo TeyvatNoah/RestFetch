@@ -5,6 +5,8 @@ namespace RestFetch.SourceGenerator;
 public readonly record struct HookInfo(
 	// 完全限定类名,不带global::
 	string FullyQualifiedName,
-	bool ConfigAwait,
-	EquatableArray<DiagnosticInfo>? Diagnostics
+	string FullyQualifiedNameWithGlobal,
+	bool ConfigureAwait,
+	EquatableArray<DiagnosticInfo>? Diagnostics,
+	EquatableArray<string>? TypeArguments
 );

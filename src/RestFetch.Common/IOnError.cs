@@ -5,7 +5,7 @@ public interface IOnError<TURL, TDisposer, TResponse, TProxy>
 	where TDisposer: IDisposer<TURL>
 	where TResponse: IDisposable
 	where TProxy: IHttpClientProxy<TURL, TDisposer, TResponse, TProxy> {
-	static abstract Task OnError(Exception? e, ref readonly APIInfo<TURL, TDisposer, TResponse, TProxy> context, CancellationToken token);
+	static abstract Task OnError(Exception? e, ref readonly APIContext<TURL, TDisposer, TResponse, TProxy> context, CancellationToken token);
 }
 
 public interface IOnError: IOnError<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy>;
