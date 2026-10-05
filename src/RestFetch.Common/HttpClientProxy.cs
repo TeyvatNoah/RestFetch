@@ -8,12 +8,14 @@ namespace RestFetch;
 // public interface IHttpClientProxy {
 // 	TResponse Request<TResponse>(int param);
 // }
-public sealed class HttpClientProxy: IHttpClientProxy {
-	private readonly HttpClient _Client;
+public sealed class HttpClientProxy(bool sharedHandler, HttpMessageHandler handler): IHttpClientProxy {
+	private readonly bool _OwnedHandler = !sharedHandler;
 
-	public required Uri BaseAddress { get => _Client.BaseAddress!; set => _Client.BaseAddress = value; }
+	private readonly HttpClient _Client = new(handler);
 
-	public static readonly SocketsHttpHandler DefaultHandler = new() {
+	public required string BaseAddress { get => _Client.BaseAddress?.ToString() ?? ""; set => _Client.BaseAddress = new(value); }
+
+	public static readonly SocketsHttpHandler SharedDefaultHandler = new() {
 		AllowAutoRedirect = true,
 		AutomaticDecompression = DecompressionMethods.All,
 		PooledConnectionLifetime = TimeSpan.FromMinutes(2),
@@ -26,12 +28,23 @@ public sealed class HttpClientProxy: IHttpClientProxy {
 		}
 	};
 
-	public HttpClientProxy() => _Client = new(DefaultHandler);
+	public HttpClientProxy(): this(false, new SocketsHttpHandler() {
+		AllowAutoRedirect = true,
+		AutomaticDecompression = DecompressionMethods.All,
+		PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+		MaxConnectionsPerServer = 100,
+		// 注意会共享CookieContainer
+		UseCookies = true,
+		SslOptions = new() {
+			EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+			CertificateRevocationCheckMode = X509RevocationMode.Online
+		}
+	}) {}
 
-	public HttpClientProxy(HttpMessageHandler handler) => _Client = new(handler);
+	public HttpClientProxy(HttpMessageHandler handler): this(true, handler) => _Client = new(handler);
 
-	public Task<HttpResponseMessage> SendAsync<TRequestBodyContent>(ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context, Dictionary<string, string>? headers, TRequestBodyContent? body, CancellationToken token) {
-		using var msg = new HttpRequestMessage(context.HttpMethod, context.URLProxy.Uri is null ? new(context.URLProxy.URL) : context.URLProxy.Uri);
+	public Task<HttpResponseMessage> SendAsync<TRequestBodyContent>(ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context, Dictionary<string, string>? headers, TRequestBodyContent? body, CancellationToken token) {
+		using var msg = new HttpRequestMessage(context.HttpMethod, context.URL);
 		if (headers is not null) {
 			foreach (var (key, value) in headers) {
 				msg.Headers.TryAddWithoutValidation(key, value);
@@ -46,7 +59,17 @@ public sealed class HttpClientProxy: IHttpClientProxy {
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public void Dispose() => _Client.Dispose();
+	public static HttpClientProxy Create(string baseAddress)
+		=> new() {
+			BaseAddress = baseAddress
+		};
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public void Dispose() {
+		if (_OwnedHandler) {
+			_Client.Dispose();
+		}
+	}
 }
 
 public interface IRestFetchOptions {

@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 using Microsoft.CodeAnalysis;
@@ -72,16 +74,16 @@ public sealed record MethodInfo(
 			Kind: symbol.Kind,
 			MethodKind: symbol.MethodKind,
 			Name: symbol.Name,
-			Parameters: symbol.Parameters.Select(e => ParameterInfo.CreateFromSymbol(e, knownTypes)).ToImmutableArraySafe(),
+			Parameters: symbol.Parameters.Select(e => ParameterInfo.CreateFromSymbol(e, knownTypes)).ToArray().ToImmutableArray(),
 			ReturnsByRef: symbol.ReturnsByRef,
 			ReturnsByRefReadonly: symbol.ReturnsByRefReadonly,
 			ReturnsVoid: symbol.ReturnsVoid,
 			ReturnType: TypeInfo.CreateFromSymbolWithoutMethods(symbol.ReturnType, knownTypes),
 			ReturnNullableAnnotation: symbol.ReturnNullableAnnotation,
 			ReturnTypeFullyQualifiedName: symbol.ReturnType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
-			TypeArgumentNullableAnnotations: symbol.TypeArgumentNullableAnnotations.Select(static e => (byte)e).ToImmutableArraySafe(),
-			TypeArguments: symbol.TypeArguments.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArraySafe(),
-			TypeParameters: symbol.TypeParameters.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArraySafe(),
+			TypeArgumentNullableAnnotations: symbol.TypeArgumentNullableAnnotations.Select(static e => (byte)e).ToImmutableArray(),
+			TypeArguments: symbol.TypeArguments.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArray(),
+			TypeParameters: symbol.TypeParameters.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArray(),
 			Location: symbol.Locations.IsEmpty ? null : new(symbol.Locations[0]),
 			// TODO
 			Diagnostics: null

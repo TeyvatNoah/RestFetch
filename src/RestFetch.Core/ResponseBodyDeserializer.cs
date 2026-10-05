@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -42,9 +43,12 @@ public sealed class ResponseBodyDeserializer {
 			[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HttpContentJsonExtensions))]
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public static Task<TResponseBody?> Parse<TResponseBody>(HttpResponseMessage resp,
-				ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context,
+				ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context,
 				JsonSerializerContext? jsonContext,
 				CancellationToken cancellationToken) {
+				if (resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0) {
+					return Task.FromResult<TResponseBody?>(default);
+				}
 				_Options.TypeInfoResolver = jsonContext;
 				return resp.Content.ReadFromJsonAsync<TResponseBody>(_Options, cancellationToken);
 			}

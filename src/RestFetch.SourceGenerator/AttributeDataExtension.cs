@@ -54,4 +54,31 @@ public static class AttributeDataExtension {
 
 		return Location.None;
 	}
+	public static Location GetNamedArgumentLocation(
+		this AttributeData attributeData,
+		string argName,
+		bool unwrapTypeOf = true) {
+		if (attributeData.ApplicationSyntaxReference?.GetSyntax() is not AttributeSyntax attrSyntax) {
+			return Location.None;
+		}
+
+		if (attrSyntax.ArgumentList is null) {
+			return attrSyntax.GetLocation();
+		}
+
+		foreach (var arg in attrSyntax.ArgumentList.Arguments) {
+			// [Body(JsonContext = typeof(Bar))]
+			string? currentArgName = arg.NameEquals?.Name.Identifier.ValueText;
+
+			// [Body(jsonContext: typeof(Bar))]
+			currentArgName ??= arg.NameColon?.Name.Identifier.ValueText;
+
+			if (currentArgName == argName) {
+				ExpressionSyntax expr = arg.Expression;
+				return unwrapTypeOf && expr is TypeOfExpressionSyntax typeOfExpr ? typeOfExpr.Type.GetLocation() : expr.GetLocation();
+			}
+		}
+
+		return attrSyntax.GetLocation();
+	}
 }

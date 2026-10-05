@@ -4,12 +4,17 @@ using System.Runtime.CompilerServices;
 using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace RestFetch.SourceGenerator;
 
 public sealed record ApiDefinitionMethodInfo(
 	MethodInfo MethodInfo,
 	bool IsValid,
+	bool ReturnsVoid,
+	bool ReturnsStream,
+	bool ReturnsRawResponse,
+	bool ReturnsIAsyncEnumerableT,
 	string Path,
 	string HttpMethod,
 	string BaseAddress,
@@ -25,6 +30,7 @@ public sealed record ApiDefinitionMethodInfo(
 	EquatableArray<KeyValuePairInfo> StaticHeaders,
 	EquatableArray<KeyValuePairInfo> StaticMetadata,
 	EquatableArray<ApiParameterExtraInfo> ApiParameterExtraInfos,
+	EquatableArray<PathSegment>? PathSegments,
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
 	private static readonly Dictionary<string, string> HttpMethodAttrMap = new() {
@@ -45,7 +51,7 @@ public sealed record ApiDefinitionMethodInfo(
 
 	private static readonly DiagnosticDescriptor HookRule6 = new("RestFetch0026",
 		"错误的Response类型",
-		"Response<TDeserializer>中TDeserializer必须实现IResponseBodyDeserializer或IResponseBodyDeserializer<TURL, TDisposer, TResponse, TProxy>",
+		"Response<TDeserializer>中TDeserializer必须实现IResponseBodyDeserializer或IResponseBodyDeserializer<TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HttpMethodRule0 = new("RestFetch0040",
@@ -63,21 +69,37 @@ public sealed record ApiDefinitionMethodInfo(
 		"方法必须有一个HttpMethodAttribute标记(如[Get],[Post]等",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
+	private static readonly DiagnosticDescriptor ReturnTypeRule0 = new("RestFetch0080",
+		"错误的返回类型",
+		"返回类型必须是Task/Task<T>/ValueTask/ValueTask<T>/IAsyncEnumerable<T>/IObservable<T>",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
+
+	private static readonly DiagnosticDescriptor ParameterRule17 = new("RestFetch0067",
+		"错误的Path格式",
+		"Path中的{}需要闭合",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
+
+	private static readonly DiagnosticDescriptor ParameterRule18 = new("RestFetch0068",
+		"错误的Path参数",
+		"Path中未找到{0}对应的参数",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
+
 	public static ApiDefinitionMethodInfo CreateFromSymbol(IMethodSymbol symbol, KnownTypes knownTypes, ApiDefinitionTypeInfo apiDefinitionType) {
 		var methodInfo = MethodInfo.CreateFromSymbol(symbol, knownTypes);
 		var attrList = symbol.GetAttributes();
 		var baseAddress = ApiDefinitionTypeInfo.GetBaseAddress(attrList, knownTypes) ?? apiDefinitionType.BaseAddress;
-		var staticHeaders = ApiDefinitionTypeInfo.GetStaticHeaders(attrList, knownTypes);
+		var staticHeaders = ApiDefinitionTypeInfo.GetStaticHeaders(attrList, knownTypes).ToArray();
 		var validStaticHeaders = staticHeaders
 			.Where(static header => header.Diagnostics is null)
-			.Union(apiDefinitionType.StaticHeaders.ToImmutableArraySafe(), HeaderEqualityComparer.Default)
+			.Union(apiDefinitionType.StaticHeaders, HeaderEqualityComparer.Default)
 			.Where(static header => header.Value is not null);
 			// 去重相同的header,但是允许方法级的覆盖类级
 			// .Distinct(HeaderEqualityComparer.Default);
 		var headerErrors = staticHeaders
 			.Where(static header => header.Diagnostics is not null)
-			.SelectMany(static header => header.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArraySafe());
-		var staticMetadata = GetStaticMetadata(attrList, knownTypes);
+			.SelectMany(static header => header.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArray())
+			.ToArray();
+		var staticMetadata = GetStaticMetadata(attrList, knownTypes).ToArray();
 		var validStaticMetadata = staticMetadata
 			.Where(static metadata => metadata.Diagnostics is null)
 			.GroupBy(static header => header.Key, StringComparer.OrdinalIgnoreCase)
@@ -85,7 +107,8 @@ public sealed record ApiDefinitionMethodInfo(
 			.Distinct();
 		var metadataErrors = staticMetadata
 			.Where(static metadata => metadata.Diagnostics is not null)
-			.SelectMany(static metadata => metadata.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArraySafe());
+			.SelectMany(static metadata => metadata.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArray())
+			.ToArray();
 		var idGenerator = ApiDefinitionTypeInfo.GetIdGenerator(attrList, knownTypes) ?? apiDefinitionType.IdGenerator;
 		var beforeSendHook = ApiDefinitionTypeInfo.GetBeforeSendHook(attrList, knownTypes) ?? apiDefinitionType.BeforeSendHook;
 		var afterResponseHook = ApiDefinitionTypeInfo.GetAfterResponseHook(attrList, knownTypes) ?? apiDefinitionType.AfterResponseHook;
@@ -93,13 +116,23 @@ public sealed record ApiDefinitionMethodInfo(
 		var onError = ApiDefinitionTypeInfo.GetOnError(attrList, knownTypes) ?? apiDefinitionType.OnError;
 		var onSuccess = ApiDefinitionTypeInfo.GetOnSuccess(attrList, knownTypes) ?? apiDefinitionType.OnSuccess;
 		// TODO 应当根据方法的返回类型提供默认值,应当检查返回类型是否被默认反序列化器支持
-		var responseBodyDeserializer = GetResponseBodyDeserializer(attrList, knownTypes) ?? new();
-		var (path, method, httpAttrErrors) = GetPathAndHttpMethod(attrList, knownTypes, symbol);
+		var responseBodyDeserializer = GetResponseBodyDeserializer(attrList, knownTypes) ?? new(
+			FullyQualifiedName: "RestFetch.ResponseBodyDeserializer.Json",
+			FullyQualifiedNameWithGlobal: "global::RestFetch.ResponseBodyDeserializer.Json",
+			ConfigureAwait: false,
+			Diagnostics: null,
+			TypeArguments: null,
+			JsonContext: null
+		);
 
-		var parameterExtraInfos = symbol.Parameters.Select(parameter => ApiParameterExtraInfo.CreateFromSymbol(parameter, knownTypes));
+		var miscErrors = new List<DiagnosticInfo>();
+		var parameterExtraInfos = symbol.Parameters.Select(parameter => ApiParameterExtraInfo.CreateFromSymbol(parameter, knownTypes)).ToArray();
+		var hasQueryString = parameterExtraInfos.Any(static p => p is QueryParameter);
+		var paramParameters = parameterExtraInfos.Where(static p => p is ParamParameter).Select(static p => (ParamParameter)p).ToArray();
+		var (path, httpMethod, pathSegments, httpAttrErrors) = GetPathAndHttpMethod(attrList, knownTypes, symbol, paramParameters, hasQueryString);
 		var hasMultipleBody = parameterExtraInfos.Where(static item => item.Kind == ApiParameterKind.Body).ToArray().Length > 1;
-		var isValid = parameterExtraInfos.All(static param => param.IsValid) && !hasMultipleBody;
-		var paramErrors = parameterExtraInfos.SelectMany(static param => param.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArraySafe());
+		var isValid = parameterExtraInfos.All(static param => param.IsValid) && !hasMultipleBody && httpAttrErrors is null;
+		var paramErrors = parameterExtraInfos.SelectMany(static param => param.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArray());
 
 		if (hasMultipleBody) {
 			paramErrors = paramErrors.Concat(Enumerable.Repeat(
@@ -111,18 +144,48 @@ public sealed record ApiDefinitionMethodInfo(
 			, 1));
 		}
 
+		if (!methodInfo.IsAsyncReturnType) {
+			isValid = false;
+			miscErrors.Add(new(
+				ReturnTypeRule0,
+				new(symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is MethodDeclarationSyntax methodSyntax
+					? methodSyntax.ReturnType.GetLocation()
+					: symbol.Locations.FirstOrDefault() ?? Location.None),
+				null
+			));
+		}
+
+		var returnsStream = false;
+		var returnsRawResponse = false;
+		if (symbol.ReturnType is INamedTypeSymbol {
+			IsGenericType: true,
+			TypeArguments: [var responseType, ..]
+		}) {
+			if (responseType.InheritsFrom(knownTypes.Stream)) {
+				returnsStream = true;
+			}
+			if (responseType.ToDisplayString(TypeInfo.FullyQualifiedFormat) == apiDefinitionType.TResponse) {
+				returnsRawResponse = true;
+			}
+		}
 
 		return new(
 			MethodInfo: methodInfo,
 			IsValid: isValid,
+			ReturnsVoid: symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.Task)
+				|| symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.ValueTask),
+			ReturnsIAsyncEnumerableT: symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.IAsyncEnumerableT),
+			ReturnsStream: returnsStream,
+			ReturnsRawResponse: returnsRawResponse,
 			AsyncReturnTypeKind: symbol.ReturnType.GetAsyncReturnTypeKind(knownTypes),
 			Path: path,
-			HttpMethod: method,
-			ApiParameterExtraInfos: parameterExtraInfos.ToImmutableArraySafe(),
+			PathSegments: pathSegments?.ToImmutableArray(),
+			HttpMethod: httpMethod,
+			ApiParameterExtraInfos: parameterExtraInfos.ToImmutableArray(),
 			IdGenerator: idGenerator,
 			BaseAddress: baseAddress,
-			StaticHeaders: validStaticHeaders.ToImmutableArraySafe(),
-			StaticMetadata: validStaticMetadata.ToImmutableArraySafe(),
+			StaticHeaders: validStaticHeaders.ToImmutableArray(),
+			StaticMetadata: validStaticMetadata.ToImmutableArray(),
 			BeforeSendHook: beforeSendHook,
 			AfterResponseHook: afterResponseHook,
 			HttpClientProxy: apiDefinitionType.HttpClientProxy,
@@ -139,7 +202,9 @@ public sealed record ApiDefinitionMethodInfo(
 				afterResponseHook?.Diagnostics,
 				exceptionFactory.Diagnostics,
 				onError?.Diagnostics,
-				onSuccess?.Diagnostics
+				onSuccess?.Diagnostics,
+				responseBodyDeserializer.Diagnostics,
+				miscErrors.ToImmutableArray()
 			)
 		);
 	}
@@ -173,11 +238,34 @@ public sealed record ApiDefinitionMethodInfo(
 		var responseBodyDeserializerInterface = knownTypes.ResponseBodyDeserializer;
 		var responseBOdyDeserializerGenericInterface = knownTypes.ResponseBodyGenericDeserializer;
 		var targetType = responseBodyDeserializer.AttributeClass.TypeArguments[0];
-		var configureAwait = !responseBodyDeserializer.NamedArguments.IsEmpty && (bool)responseBodyDeserializer.NamedArguments[0].Value.Value!;
+		var configureAwait = false;
+		string? jsonContextFullyQualifiedNameWithGlobal = null;
+		foreach (var item in responseBodyDeserializer.NamedArguments) {
+			// var (key, value) = item;
+			if (item.Key == "ConfigureAwait") {
+				configureAwait = (bool)item.Value.Value!;
+			} else if (item.Key == "JsonContext") {
+				if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
+					jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+				} else {
+					return new(
+						FullyQualifiedName: targetType.ToDisplayString(),
+						FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+						JsonContext: jsonContextFullyQualifiedNameWithGlobal,
+						ConfigureAwait: configureAwait,
+						TypeArguments: null,
+						Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ApiParameterExtraInfo.ParameterRule16, new(responseBodyDeserializer.GetNamedArgumentLocation("JsonContext")),
+							(ImmutableArray<string>)[item.Value.Value is ITypeSymbol contextType ? contextType.Name : "JsonContext"])]
+					);
+				}
+			}
+		}
+
 		return targetType.ImplementsInterface(responseBodyDeserializerInterface) || targetType.ImplementsInterface(responseBOdyDeserializerGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 				ConfigureAwait: configureAwait,
 				TypeArguments: null,
 				Diagnostics: null
@@ -185,6 +273,7 @@ public sealed record ApiDefinitionMethodInfo(
 			: new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 				ConfigureAwait: configureAwait,
 				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule6, new(responseBodyDeserializer.GetTypeArgumentLocation()), null)]
@@ -192,7 +281,12 @@ public sealed record ApiDefinitionMethodInfo(
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static (string Path, string HttpMethod, List<DiagnosticInfo>? Diagnostics) GetPathAndHttpMethod(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes, IMethodSymbol methodSymbol) {
+	public static (string Path, string HttpMethod, List<PathSegment>? pathSegments, List<DiagnosticInfo>? Diagnostics) GetPathAndHttpMethod(
+		ImmutableArray<AttributeData> attrs,
+		KnownTypes knownTypes,
+		IMethodSymbol methodSymbol,
+		ParamParameter[] @params,
+		bool hasQueryString) {
 		var httpMethodAttrBase = knownTypes.HttpMethodAttribute;
 		var httpMethodAttrs = attrs
 			.Where(attr => attr.AttributeClass.InheritsFrom(httpMethodAttrBase))
@@ -204,17 +298,45 @@ public sealed record ApiDefinitionMethodInfo(
 				var errLocation = attr.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? methodSymbol.Locations.FirstOrDefault() ?? Location.None;
 				errors.Add(new(HttpMethodRule0, new(errLocation), null));
 			}
-			return ("", "", errors);
+			return ("", "", null, errors);
 		} else if (!(methodSymbol.IsPartialDefinition || methodSymbol.ContainingType.TypeKind == TypeKind.Interface) && httpMethodAttrs.Length == 1) {
 			var errLocation = httpMethodAttrs[0].ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? methodSymbol.Locations.FirstOrDefault() ?? Location.None;
-			return ("", "", [new(HttpMethodRule1, new(errLocation), null)]);
+			return ("", "", null, [new(HttpMethodRule1, new(errLocation), null)]);
 			// 报错
 		} else if ((methodSymbol.IsPartialDefinition || methodSymbol.ContainingType.TypeKind == TypeKind.Interface) && httpMethodAttrs.Length == 0) {
-			return ("", "", [new(HttpMethodRule2, new(methodSymbol.Locations.FirstOrDefault() ?? Location.None), null)]);
+			return ("", "", null, [new(HttpMethodRule2, new(methodSymbol.Locations.FirstOrDefault() ?? Location.None), null)]);
 		} else {
-			var path = (string?)httpMethodAttrs[0]?.ConstructorArguments[0].Value ?? "";
+			var path = httpMethodAttrs[0].ConstructorArguments.Length > 0 ? (string?)httpMethodAttrs[0].ConstructorArguments[0].Value ?? "/" : "/";
 			var method = HttpMethodAttrMap[httpMethodAttrs[0].AttributeClass!.ToDisplayString()];
-			return (path, method, null);
+
+			if (hasQueryString) {
+				if (!path.Contains('?')) {
+					path += '?';
+				} else {
+					path += '&';
+				}
+			}
+
+			if (!PathSegment.TryParse(path, out var paramSegments)) {
+				var attrSyntax = httpMethodAttrs[0].ApplicationSyntaxReference?.GetSyntax();
+				var errLocation = Location.None;
+				if (attrSyntax is AttributeSyntax syntax) {
+					errLocation = syntax.ArgumentList?.Arguments.FirstOrDefault()?.GetLocation() ?? Location.None;
+				}
+				return ("", "", null, [new(ParameterRule17, new(errLocation), null)]);
+			}
+
+			foreach (var seg in paramSegments) {
+				if (seg is ParamSegment paramSeg && !@params.Any(p => p.Name == paramSeg.RootParamName)) {
+					var attrSyntax = httpMethodAttrs[0].ApplicationSyntaxReference?.GetSyntax();
+					var errLocation = Location.None;
+					if (attrSyntax is AttributeSyntax syntax) {
+						errLocation = syntax.ArgumentList?.Arguments.FirstOrDefault()?.GetLocation() ?? Location.None;
+					}
+					return ("", "", null, [new(ParameterRule18, new(errLocation), new string[] { paramSeg.RootParamName }.ToImmutableArray())]);
+				}
+			}
+			return (path, method, paramSegments, null);
 		}
 	}
 }

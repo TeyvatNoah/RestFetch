@@ -12,8 +12,6 @@ public sealed record ApiDefinitionTypeInfo(
 	bool IsValid,
 	string BaseAddress,
 	string IdGenerator,
-	string TURL,
-	string TDisposer,
 	string TResponse,
 	string TProxy,
 	string TRequestBodyContent,
@@ -27,11 +25,9 @@ public sealed record ApiDefinitionTypeInfo(
 	EquatableArray<ApiDefinitionMethodInfo> Methods,
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
-	private static string TURLName = "global::RestFetch.URLProxy";
-	private static string TDisposerName = "global::RestFetch.URLDisposer";
-	private static string TResponseName = "global::System.Net.Http.HttpResponseMessage";
-	private static string TProxyName = "global::RestFetch.HttpClientProxy";
-	private static string TRequestBodyContentName = "global::System.Net.Http.HttpResponseMessage";
+	private const string TResponseName = "global::System.Net.Http.HttpResponseMessage";
+	private const string TProxyName = "global::RestFetch.HttpClientProxy";
+	private const string TRequestBodyContentName = "global::System.Net.Http.HttpResponseMessage";
 
 	private static readonly DiagnosticDescriptor HeaderRule0 = new("RestFetch0010",
 		"错误的Header构造函数",
@@ -40,39 +36,39 @@ public sealed record ApiDefinitionTypeInfo(
 
 	private static readonly DiagnosticDescriptor HookRule0 = new("RestFetch0020",
 		"错误的BeforeSendHook类型",
-		"BeforeSend<THook>中THook必须实现IBeforeSendHook或IBeforeSendHook<TURL, TDisposer, TRequestBodyContent, TResponse, TProxy>",
+		"BeforeSend<THook>中THook必须实现IBeforeSendHook或IBeforeSendHook<TRequestBodyContent, TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule1 = new("RestFetch0021",
 		"错误的AfterResponseHook类型",
-		"AfterResponse<THook>中THook必须实现IAfterResponseHook或IAfterResponseHook<TURL, TDisposer, TResponse, TProxy>",
+		"AfterResponse<THook>中THook必须实现IAfterResponseHook或IAfterResponseHook<TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule2 = new("RestFetch0022",
 		"错误的ExceptionFactory类型",
-		"ExceptionFactory<THook>中THook必须实现IExceptionFactory或IExceptionFactory<TURL, TDisposer, TResponse, TProxy>",
+		"ExceptionFactory<THook>中THook必须实现IExceptionFactory或IExceptionFactory<TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule3 = new("RestFetch0023",
 		"错误的HttpClientProxy类型",
-		"HttpClientProxy<THook>中THook必须实现IHttpClientProxy或IHttpClientProxy<TURL, TDisposer, TResponse, TProxy>",
+		"HttpClientProxy<THook>中THook必须实现IHttpClientProxy或IHttpClientProxy<TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule4 = new("RestFetch0024",
 		"错误的OnError类型",
-		"OnError<THook>中THook必须实现IOnError或IOnError<TURL, TDisposer, TResponse, TProxy>",
+		"OnError<THook>中THook必须实现IOnError或IOnError<TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule5 = new("RestFetch0025",
 		"错误的OnSuccess类型",
-		"OnSuccess<THook>中THook必须实现IOnSuccess或IOnSuccess<TURL, TDisposer, TResponse, TProxy>",
+		"OnSuccess<THook>中THook必须实现IOnSuccess或IOnSuccess<TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	public static ApiDefinitionTypeInfo CreateFromSymbol(ITypeSymbol symbol, KnownTypes knownTypes) {
 		var typeInfo = TypeInfo.CreateFromSymbol(symbol, knownTypes, 1);
 		var attrList = symbol.GetAttributes();
 		var baseAddress = GetBaseAddress(attrList, knownTypes) ?? "";
-		var staticHeaders = GetStaticHeaders(attrList, knownTypes);
+		var staticHeaders = GetStaticHeaders(attrList, knownTypes).ToArray();
 		var validStaticHeaders = staticHeaders
 			.Where(static header => header.Diagnostics is null)
 			.GroupBy(static header => header.Key, StringComparer.OrdinalIgnoreCase)
@@ -81,7 +77,8 @@ public sealed record ApiDefinitionTypeInfo(
 			// .Distinct(HeaderEqualityComparer.Default);
 		var headerErrors = staticHeaders
 			.Where(static header => header.Diagnostics is not null)
-			.SelectMany(static header => header.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArraySafe());
+			.SelectMany(static header => header.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArray())
+			.ToArray();
 		var idGenerator = GetIdGenerator(attrList, knownTypes) ?? $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestIdGenerator";
 		var beforeSendHook = GetBeforeSendHook(attrList, knownTypes);
 		var afterResponseHook = GetAfterResponseHook(attrList, knownTypes);
@@ -97,26 +94,22 @@ public sealed record ApiDefinitionTypeInfo(
 			FullyQualifiedNameWithGlobal: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxy",
 			ConfigureAwait: false,
 			TypeArguments: new string[] {
-				TURLName,
-				TDisposerName,
 				TResponseName,
 				TProxyName
-			}.ToImmutableArraySafe(),
+			}.ToImmutableArray(),
 			Diagnostics: null
 		);
 		var onError = GetOnError(attrList, knownTypes);
 		var onSuccess = GetOnSuccess(attrList, knownTypes);
 		var tempApiDefinition = new ApiDefinitionTypeInfo(
-			TURL: httpClientProxy.TypeArguments?[0] ?? TURLName,
-			TDisposer: httpClientProxy.TypeArguments?[1] ?? TDisposerName,
-			TResponse: httpClientProxy.TypeArguments?[2] ?? TResponseName,
-			TProxy: httpClientProxy.TypeArguments?[3] ?? TProxyName,
-			TRequestBodyContent: beforeSendHook?.TypeArguments?[2] ?? TRequestBodyContentName,
+			TResponse: httpClientProxy.TypeArguments?[0] ?? TResponseName,
+			TProxy: httpClientProxy.TypeArguments?[1] ?? TProxyName,
+			TRequestBodyContent: beforeSendHook?.TypeArguments?[0] ?? TRequestBodyContentName,
 			IsValid: false,
 			TypeInfo: typeInfo,
 			IdGenerator: idGenerator,
 			BaseAddress: baseAddress,
-			StaticHeaders: validStaticHeaders.ToImmutableArraySafe(),
+			StaticHeaders: validStaticHeaders.ToImmutableArray(),
 			BeforeSendHook: beforeSendHook,
 			AfterResponseHook: afterResponseHook,
 			ExceptionFactory: exceptionFactory,
@@ -134,13 +127,14 @@ public sealed record ApiDefinitionTypeInfo(
 				onSuccess?.Diagnostics
 			)
 		);
-		var methods = symbol.GetInstanceMethods().Select(item => ApiDefinitionMethodInfo.CreateFromSymbol(item, knownTypes, tempApiDefinition));
+		var methods = symbol.GetInstanceMethods().Select(item => ApiDefinitionMethodInfo.CreateFromSymbol(item, knownTypes, tempApiDefinition)).ToArray();
 		return tempApiDefinition with {
 			IsValid = methods.All(static m => m.IsValid),
-			Methods = methods.ToImmutableArraySafe(),
+			Methods = methods.ToImmutableArray(),
 			Diagnostics = tempApiDefinition.Diagnostics
 				.Concat(methods
-					.SelectMany(static m => m.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArraySafe())).ToImmutableArraySafe()
+				.SelectMany(static m => m.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArray()))
+				.ToImmutableArray()
 		};
 	}
 
@@ -179,7 +173,7 @@ public sealed record ApiDefinitionTypeInfo(
 	public static string? GetIdGenerator(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
 		var idAttr = attrs.GetAttributesBySymbol(knownTypes.IdGeneratorAttribute)
 			.FirstOrDefault();
-		return idAttr?.AttributeClass?.TypeArguments[0]?.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+		return idAttr?.AttributeClass?.TypeArguments.IsEmpty ?? true ? null : idAttr?.AttributeClass?.TypeArguments[0].ToDisplayString(TypeInfo.FullyQualifiedFormat);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -195,12 +189,14 @@ public sealed record ApiDefinitionTypeInfo(
 
 		if (targetType.ImplementsInterface(beforeSendHookInterface) || targetType.ImplementsInterface(beforeSendHookGenericInterface)) {
 			var beforeSendHookGenericInterfaceImpl = targetType.GetInterface(beforeSendHookGenericInterface);
-			var typeArguments = beforeSendHookGenericInterfaceImpl!.TypeArguments.Select(static t => t.ToDisplayString(RestFetch.SourceGenerator.TypeInfo.FullyQualifiedFormat));
+			var typeArguments = beforeSendHookGenericInterfaceImpl!.TypeArguments
+				.Select(static t => t.ToDisplayString(RestFetch.SourceGenerator.TypeInfo.FullyQualifiedFormat))
+				.ToArray();
 			return new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
 				ConfigureAwait: configureAwait,
-				TypeArguments: typeArguments.ToImmutableArraySafe(),
+				TypeArguments: typeArguments.ToImmutableArray(),
 				Diagnostics: null
 			);
 		} else {
@@ -281,7 +277,9 @@ public sealed record ApiDefinitionTypeInfo(
 
 		if (targetType.ImplementsInterface(httpClientProxyInterface) || targetType.ImplementsInterface(httpClientProxyGenericInterface)) {
 			var httpClientProxyGenericInterfaceImpl = targetType.GetInterface(httpClientProxyGenericInterface);
-			var typeArguments = httpClientProxyGenericInterfaceImpl!.TypeArguments.Select(static t => t.ToDisplayString(RestFetch.SourceGenerator.TypeInfo.FullyQualifiedFormat));
+			var typeArguments = httpClientProxyGenericInterfaceImpl!.TypeArguments
+				.Select(static t => t.ToDisplayString(TypeInfo.FullyQualifiedFormat))
+				.ToArray();
 			// foreach (var type in httpClientProxyGenericInterfaceImpl!.TypeArguments) {
 			// 	var t = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(type, knownTypes);
 			// }
@@ -289,7 +287,7 @@ public sealed record ApiDefinitionTypeInfo(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
 				ConfigureAwait: configureAwait,
-				TypeArguments: typeArguments.ToImmutableArraySafe(),
+				TypeArguments: typeArguments.ToImmutableArray(),
 				Diagnostics: null
 			);
 		} else {

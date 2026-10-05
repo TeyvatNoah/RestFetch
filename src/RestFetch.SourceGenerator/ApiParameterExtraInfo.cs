@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis;
 namespace RestFetch.SourceGenerator;
 
 public record ApiParameterExtraInfo(
+	string Name,
 	ApiParameterKind Kind,
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics
@@ -22,7 +23,7 @@ public record ApiParameterExtraInfo(
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule2 = new("RestFetch0052",
 		"错误的请求body序列化器",
-		@"{0}必须实现IRequestBodySerializer或IRequestBodySerializer<TURL, TDisposer, TRequestBodyContent, TResponse, TProxy>或IRequestBodySerializer<TURL, TDisposer, TRequestBody, TRequestBodyContent, TResponse, TProxy>",
+		@"{0}必须实现IRequestBodySerializer或IRequestBodySerializer<TRequestBodyContent, TResponse, TProxy>或IRequestBodySerializer<TRequestBody, TRequestBodyContent, TResponse, TProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule3 = new("RestFetch0053",
 		"错误的请求param序列化器",
@@ -76,6 +77,10 @@ public record ApiParameterExtraInfo(
 		"Cancellation参数不能为null",
 		"Cancellation参数不能为null",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
+	public static readonly DiagnosticDescriptor ParameterRule16 = new("RestFetch0066",
+		"错误的JsonSerializerContext类型",
+		"{0}必须继承System.Text.Json.Serialization.JsonSerializerContext",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
 	// public static readonly Dictionary<string, ApiParameterKind> ParamAttrsMap = new() {
 	// 	{ "None", ApiParameterKind.None },
 	// 	{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.BodyAttribute", ApiParameterKind.Body },
@@ -113,11 +118,13 @@ public record ApiParameterExtraInfo(
 		if (paramAttrs.Length > 1) {
 			var errors = paramAttrs
 				.Select(attr => attr.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? symbol.Locations.FirstOrDefault() ?? Location.None)
-				.Select(static location => new DiagnosticInfo(ParameterRule0, new(location), null));
+				.Select(static location => new DiagnosticInfo(ParameterRule0, new(location), null))
+				.ToArray();
 			return new(
+				Name: symbol.Name,
 				Kind: ApiParameterKind.None,
 				IsValid: false,
-				Diagnostics: errors.ToImmutableArraySafe()
+				Diagnostics: errors.ToImmutableArray()
 			);
 		} else if (paramAttrs.Length == 0) {
 			var cancellationTokenType = knownTypes.CancellationToken;
@@ -125,18 +132,21 @@ public record ApiParameterExtraInfo(
 			if (originalType.InheritsFrom(cancellationTokenType)) {
 				if (symbol.Type.IsNullable()) {
 					return new ApiParameterExtraInfo(
+						Name: symbol.Name,
 						Kind: ApiParameterKind.None,
 						IsValid: false,
 						Diagnostics: (ImmutableArray<DiagnosticInfo>)[new DiagnosticInfo(ParameterRule15, new(symbol.Locations.FirstOrDefault() ?? Location.None), null)]
 					);
 				} else {
 					return new CancellationTokenParameter(
+						Name: symbol.Name,
 						IsValid: true,
 						Diagnostics: null
 					);
 				}
 			} else {
 				return new ApiParameterExtraInfo(
+					Name: symbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new DiagnosticInfo(ParameterRule1, new(symbol.Locations.FirstOrDefault() ?? Location.None), null)]
@@ -150,27 +160,31 @@ public record ApiParameterExtraInfo(
 		var attrTypeName = attr.AttributeClass!.MetadataName;
 		if (attrTypeName == "BodyAttribute") {
 			var configureAwait = false;
-			// TODO 确定类型
-			object? jsonContext = null;
+			string? jsonContextFullyQualifiedNameWithGlobal = null;
 			foreach (var item in attr.NamedArguments) {
 				// var (key, value) = item;
 				if (item.Key == "ConfigureAwait") {
 					configureAwait = (bool)item.Value.Value!;
 				} else if (item.Key == "JsonContext") {
-					// TODO 确定类型
-					jsonContext = item.Value.Value;
+					if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
+						jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+					} else {
+						return new ApiParameterExtraInfo(
+							Name: parameterSymbol.Name,
+							Kind: ApiParameterKind.None,
+							IsValid: false,
+							Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule16, new(attr.GetNamedArgumentLocation("JsonContext")),
+								(ImmutableArray<string>)[item.Value.Value is ITypeSymbol contextType ? contextType.Name : "JsonContext"])]
+						);
+					}
 				}
-			}
-			// TODO 确定JsonContext类型是否匹配
-			if (jsonContext is not null && true) {
-				// 报错
 			}
 			// TODO 检查参数类型是否是默认序列化器支持的
 			return new BodyParameter(
+				Name: parameterSymbol.Name,
 				IsValid: true,
 				ConfigureAwait: configureAwait,
-				// TODO 确定类型
-				JsonContext: jsonContext?.ToString(),
+				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 				Serializer: new(
 					ConfigureAwait: configureAwait,
 					FullyQualifiedName: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Json",
@@ -190,26 +204,30 @@ public record ApiParameterExtraInfo(
 			|| serializerTypeSymbol.ImplementsInterface(iRequestBodySerializerGenericSymbol2)
 			) {
 				var configureAwait = false;
-				// TODO 确定类型
-				object? jsonContext = null;
+				string? jsonContextFullyQualifiedNameWithGlobal = null;
 				foreach (var item in attr.NamedArguments) {
 					// var (key, value) = item;
 					if (item.Key == "ConfigureAwait") {
 						configureAwait = (bool)item.Value.Value!;
 					} else if (item.Key == "JsonContext") {
-						// TODO 确定类型
-						jsonContext = item.Value.Value;
+						if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
+							jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+						} else {
+							return new ApiParameterExtraInfo(
+								Name: parameterSymbol.Name,
+								Kind: ApiParameterKind.None,
+								IsValid: false,
+								Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule16, new(attr.GetNamedArgumentLocation("JsonContext")),
+									(ImmutableArray<string>)[item.Value.Value is ITypeSymbol contextType ? contextType.Name : "JsonContext"])]
+							);
+						}
 					}
 				}
-				// TODO 确定JsonContext类型是否匹配
-				if (jsonContext is not null && true) {
-					// 报错
-				}
 				return new BodyParameter(
+					Name: parameterSymbol.Name,
 					IsValid: true,
 					ConfigureAwait: configureAwait,
-					// TODO 确定类型
-					JsonContext: jsonContext?.ToString(),
+					JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 					Serializer: new(
 						ConfigureAwait: configureAwait,
 						FullyQualifiedName: serializerTypeSymbol.ToDisplayString(),
@@ -221,6 +239,7 @@ public record ApiParameterExtraInfo(
 				);
 			} else {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule2, new(attr.GetTypeArgumentLocation()), (ImmutableArray<string>)[serializerTypeSymbol.Name])]
@@ -229,6 +248,7 @@ public record ApiParameterExtraInfo(
 		} else if (attrTypeName == "ParamAttribute") {
 			if (parameterSymbol.Type.IsNullable()) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule6,
@@ -240,6 +260,7 @@ public record ApiParameterExtraInfo(
 			var alias = !attr.ConstructorArguments.IsEmpty ? (string)attr.ConstructorArguments[0].Value! : parameterSymbol.Name;
 			var urlEncode = attr.NamedArguments.IsEmpty || (bool)attr.NamedArguments[0].Value.Value!;
 			return new ParamParameter(
+				Name: parameterSymbol.Name,
 				UrlEncode: urlEncode,
 				Alias: alias,
 				IsValid: true,
@@ -256,6 +277,7 @@ public record ApiParameterExtraInfo(
 		} else if (attrTypeName == "ParamAttribute`1") {
 			if (parameterSymbol.Type.IsNullable()) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule6,
@@ -279,6 +301,7 @@ public record ApiParameterExtraInfo(
 				interfaceList.Add(iParamEncodeSerializer!.MetadataName);
 			} else if (urlEncode) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule3, new(attr.GetTypeArgumentLocation()), (ImmutableArray<string>)[serializerTypeSymbol.Name])]
@@ -287,11 +310,13 @@ public record ApiParameterExtraInfo(
 
 			return !isParamSerializer && !isParamEncodeSerializer
 					? new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule4, new(attr.GetTypeArgumentLocation()), (ImmutableArray<string>)[serializerTypeSymbol.Name])]
 				)
 					: new ParamParameter(
+				Name: parameterSymbol.Name,
 				UrlEncode: urlEncode,
 				Alias: alias,
 				IsValid: true,
@@ -302,12 +327,13 @@ public record ApiParameterExtraInfo(
 					TypeArguments: null,
 					Diagnostics: null
 				),
-				SerializerInterfaceMetadataNames: interfaceList.ToImmutableArraySafe(),
+				SerializerInterfaceMetadataNames: interfaceList.ToImmutableArray(),
 				Diagnostics: null
 			);
 		} else if (attrTypeName == "MetadataAttribute") {
 			if (attr.ConstructorArguments.Length == 2) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule5,
@@ -318,6 +344,7 @@ public record ApiParameterExtraInfo(
 			} else {
 				var key = attr.ConstructorArguments.Length == 1 ? (string)attr.ConstructorArguments[0].Value! : parameterSymbol.Name;
 				return new MetadataParameter(
+					Name: parameterSymbol.Name,
 					Key: key,
 					IsValid: true,
 					Diagnostics: null
@@ -328,12 +355,14 @@ public record ApiParameterExtraInfo(
 			var autoAlias = attr.NamedArguments.Length != 1 || (bool)attr.NamedArguments[0].Value.Value!;
 			if (!IsDefaultQueryStringSerializerSupportedType(parameterSymbol.Type, null, knownTypes)) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule14, new(parameterSymbol.Locations.FirstOrDefault() ?? Location.None), null)]
 				);
 			} else {
 				return new QueryParameter(
+					Name: parameterSymbol.Name,
 					Alias: alias,
 					AutoAlias: autoAlias,
 					IsValid: true,
@@ -362,6 +391,7 @@ public record ApiParameterExtraInfo(
 			var isAliasQueryStringSerializer = serializerTypeSymbol.ImplementsInterface(iAliasQueryStringSerializer);
 			if (serializerTypeSymbol.InheritsFrom(queryStringGeneric) && !IsDefaultQueryStringSerializerSupportedType(parameterSymbol.Type, serializerTypeSymbol, knownTypes)) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule14, new(parameterSymbol.Locations.FirstOrDefault() ?? Location.None), null)]
@@ -377,6 +407,7 @@ public record ApiParameterExtraInfo(
 				interfaceList.Add("IAliasQueryStringSerializer`1");
 			} else if (autoAlias) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule7, new(attr.GetTypeArgumentLocation()), (ImmutableArray<string>)[serializerTypeSymbol.Name])]
@@ -385,11 +416,13 @@ public record ApiParameterExtraInfo(
 
 			return !isIQueryStringSerializer && !isQueryStringGenericSerializer && !isAliasQueryStringSerializer
 				? new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule8, new(attr.GetTypeArgumentLocation()), (ImmutableArray<string>)[serializerTypeSymbol.Name])]
 				)
 				: new QueryParameter(
+				Name: parameterSymbol.Name,
 				Alias: alias,
 				AutoAlias: autoAlias,
 				IsValid: true,
@@ -400,12 +433,13 @@ public record ApiParameterExtraInfo(
 					TypeArguments: null,
 					Diagnostics: null
 				),
-				SerializerInterfaceMetadataNames: interfaceList.ToImmutableArraySafe(),
+				SerializerInterfaceMetadataNames: interfaceList.ToImmutableArray(),
 				Diagnostics: null
 			);
 		} else if (attrTypeName == "HeaderAttribute") {
 			if (attr.ConstructorArguments.Length == 2) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule9,
@@ -415,6 +449,7 @@ public record ApiParameterExtraInfo(
 				);
 			} else if (attr.ConstructorArguments.Length == 1 && parameterSymbol.Type.SpecialType != SpecialType.System_String) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule10,
@@ -424,6 +459,7 @@ public record ApiParameterExtraInfo(
 				);
 			} else if (attr.ConstructorArguments.IsEmpty && !IsEnumerableKeyPairStringString(parameterSymbol.Type, knownTypes)) {
 				return new ApiParameterExtraInfo(
+					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
 					IsValid: false,
 					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule11,
@@ -433,13 +469,15 @@ public record ApiParameterExtraInfo(
 				);
 			} else {
 				return new HeaderParameter(
-					Name: attr.ConstructorArguments.IsEmpty ? null : (string?)attr.ConstructorArguments[0].Value,
+					Name: parameterSymbol.Name,
+					Key: attr.ConstructorArguments.IsEmpty ? null : (string?)attr.ConstructorArguments[0].Value,
 					IsValid: true,
 					Diagnostics: null
 				);
 			}
 		} else {
 			return new ApiParameterExtraInfo(
+				Name: parameterSymbol.Name,
 				Kind: ApiParameterKind.None,
 				IsValid: false,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ParameterRule12,
@@ -533,6 +571,7 @@ public record ApiParameterExtraInfo(
 }
 
 public sealed record BodyParameter(
+	string Name,
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
 
@@ -540,12 +579,14 @@ public sealed record BodyParameter(
 	string? JsonContext,
 	HookInfo Serializer
 ): ApiParameterExtraInfo(
+	Name,
 	Kind: ApiParameterKind.Body,
 	IsValid,
 	Diagnostics
 );
 
 public sealed record ParamParameter(
+	string Name,
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
 
@@ -554,12 +595,14 @@ public sealed record ParamParameter(
 	string Alias,
 	bool UrlEncode
 ): ApiParameterExtraInfo(
+	Name,
 	Kind: ApiParameterKind.Param,
 	IsValid,
 	Diagnostics
 );
 
 public sealed record QueryParameter(
+	string Name,
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
 
@@ -568,37 +611,44 @@ public sealed record QueryParameter(
 	string? Alias,
 	bool AutoAlias
 ): ApiParameterExtraInfo(
+	Name,
 	Kind: ApiParameterKind.QueryString,
 	IsValid,
 	Diagnostics
 );
 
 public sealed record MetadataParameter(
+	string Name,
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
 
 	string Key
 ): ApiParameterExtraInfo(
+	Name,
 	Kind: ApiParameterKind.Metadata,
 	IsValid,
 	Diagnostics
 );
 
 public sealed record HeaderParameter(
+	string Name,
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
 
-	string? Name
+	string? Key
 ): ApiParameterExtraInfo(
+	Name,
 	Kind: ApiParameterKind.Header,
 	IsValid,
 	Diagnostics
 );
 
 public sealed record CancellationTokenParameter(
+	string Name,
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ): ApiParameterExtraInfo(
+	Name,
 	Kind: ApiParameterKind.Header,
 	IsValid,
 	Diagnostics

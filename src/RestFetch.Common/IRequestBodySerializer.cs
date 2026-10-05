@@ -2,29 +2,25 @@ using System.Text.Json.Serialization;
 
 namespace RestFetch;
 
-public interface IRequestBodySerializer<TURL, TDisposer, TRequestBodyContent, TResponse, TProxy>
-	where TURL: IURL
-	where TDisposer: IDisposer<TURL>
+public interface IRequestBodySerializer<TRequestBodyContent, TResponse, TProxy>
 	where TResponse: IDisposable
-	where TProxy: IHttpClientProxy<TURL, TDisposer, TResponse, TProxy> {
+	where TProxy: IHttpClientProxy<TResponse, TProxy> {
 	#pragma warning disable CA1000
-	static abstract ValueTask<TRequestBodyContent> Serialize<TRequestBody>(TRequestBody? value, JsonSerializerContext? jsonContext, ref readonly APIContext<TURL, TDisposer, TResponse, TProxy> context, CancellationToken cancellationToken, out object? bufferedData);
+	static abstract ValueTask<TRequestBodyContent> Serialize<TRequestBody>(TRequestBody? value, JsonSerializerContext? jsonContext, ref readonly APIContext<TResponse, TProxy> context, CancellationToken cancellationToken);
 	// static abstract ReadOnlySpan<byte> SerializeUTF8String(T? value);;
 	#pragma warning restore CA1000
 }
 
-public interface IRequestBodySerializer<TURL, TDisposer, TRequestBody, TRequestBodyContent, TResponse, TProxy>
-	where TURL: IURL
-	where TDisposer: IDisposer<TURL>
+public interface IRequestBodySerializer<TRequestBody, TRequestBodyContent, TResponse, TProxy>
 	where TResponse: IDisposable
-	where TProxy: IHttpClientProxy<TURL, TDisposer, TResponse, TProxy> {
+	where TProxy: IHttpClientProxy<TResponse, TProxy> {
 	#pragma warning disable CA1000
-	static abstract ValueTask<TRequestBodyContent> Serialize(TRequestBody? value, JsonSerializerContext? jsonContext, ref readonly APIContext<TURL, TDisposer, TResponse, TProxy> context, CancellationToken cancellationToken, out object? bufferedData);
+	static abstract ValueTask<TRequestBodyContent> Serialize(TRequestBody? value, JsonSerializerContext? jsonContext, ref readonly APIContext<TResponse, TProxy> context, CancellationToken cancellationToken);
 	// static abstract ReadOnlySpan<byte> SerializeUTF8String(T? value);;
 	#pragma warning restore CA1000
 }
 
-public interface IRequestBodySerializer: IRequestBodySerializer<URLProxy, URLDisposer, HttpContent, HttpResponseMessage, HttpClientProxy>;
+public interface IRequestBodySerializer: IRequestBodySerializer<HttpContent, HttpResponseMessage, HttpClientProxy>;
 
 // public interface IRequestBodyAsyncSerializer<in T> {
 // 	#pragma warning disable CA1000

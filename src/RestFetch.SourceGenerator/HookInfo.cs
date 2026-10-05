@@ -8,5 +8,6 @@ public readonly record struct HookInfo(
 	string FullyQualifiedNameWithGlobal,
 	bool ConfigureAwait,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
-	EquatableArray<string>? TypeArguments
+	EquatableArray<string>? TypeArguments,
+	string? JsonContext = null
 );

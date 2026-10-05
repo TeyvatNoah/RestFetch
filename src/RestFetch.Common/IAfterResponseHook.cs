@@ -1,11 +1,9 @@
 namespace RestFetch;
 
-public interface IAfterResponseHook<TURL, TDisposer, TResponse, TProxy>
-	where TURL: IURL
-	where TDisposer: IDisposer<TURL>
+public interface IAfterResponseHook<TResponse, TProxy>
 	where TResponse: IDisposable
-	where TProxy: IHttpClientProxy<TURL, TDisposer, TResponse, TProxy> {
-	static abstract Task AfterResponse(TResponse? resp, ref readonly APIInfo<TURL, TDisposer, TResponse, TProxy> context, CancellationToken token);
+	where TProxy: IHttpClientProxy<TResponse, TProxy> {
+	static abstract Task AfterResponse(TResponse resp, ref readonly APIContext<TResponse, TProxy> context, CancellationToken token);
 }
 
-public interface IAfterResponseHook: IAfterResponseHook<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy>;
+public interface IAfterResponseHook: IAfterResponseHook<HttpResponseMessage, HttpClientProxy>;

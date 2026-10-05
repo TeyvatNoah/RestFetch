@@ -2,7 +2,7 @@
 namespace RestFetch;
 
 public class DefaultExceptionFactory: IExceptionFactory {
-	public static ValueTask<Exception?> CreateException(HttpResponseMessage resp, ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context, CancellationToken token) {
+	public static ValueTask<Exception?> CreateException(HttpResponseMessage resp, ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context, CancellationToken token) {
 		return CreateExceptionInternal(resp, token);
 
 		static async ValueTask<Exception?> CreateExceptionInternal(HttpResponseMessage resp, CancellationToken token) {

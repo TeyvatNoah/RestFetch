@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 namespace RestFetch;
 
 
-public struct APIContext<TURL, TDisposer, TResponse, TProxy>(
+public struct APIContext<TResponse, TProxy>(
 	RequestId id,
 	TProxy client,
 	string methodName,
@@ -12,14 +12,12 @@ public struct APIContext<TURL, TDisposer, TResponse, TProxy>(
 	HttpMethod httpMethod,
 	// object? options,
 	Dictionary<string, object>? metadata
-	) : IDisposable
-	where TURL: IURL
-	where TDisposer: IDisposer<TURL>
+	)
 	where TResponse: IDisposable
-	where TProxy: IHttpClientProxy<TURL, TDisposer, TResponse, TProxy> {
+	where TProxy: IHttpClientProxy<TResponse, TProxy> {
 	// 请求id
 	public readonly RequestId ID = id;
-	public TURL URLProxy = default!;
+	public string URL = default!;
 	public readonly TProxy Client = client;
 	// API 方法名 TODO 注意泛型情况
 	public readonly string MethodName = methodName;
@@ -31,9 +29,5 @@ public struct APIContext<TURL, TDisposer, TResponse, TProxy>(
 	public readonly HttpMethod HttpMethod = httpMethod;
 	// TODO RestFetch选项
 	// public readonly object? Options = options;
-	// TODO metadata
 	public readonly Dictionary<string, object>? Metadata = metadata;
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public void Dispose() => TDisposer.Dispose(ref URLProxy);
 }

@@ -55,10 +55,9 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context,
-			CancellationToken cancellationToken, out object? bufferedData) {
+			ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context,
+			CancellationToken cancellationToken) {
 			var isFastPath = jsonContext is not null;
-			bufferedData = null;
 			_FastPathOptions.TypeInfoResolver = jsonContext;
 			return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, new("application/json"), isFastPath ? _FastPathOptions : _Options));
 		}
@@ -72,12 +71,11 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 		JsonSerializerContext? jsonContext,
-		ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context,
-		CancellationToken cancellationToken, out object? bufferedData) {
+		ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context,
+		CancellationToken cancellationToken) {
 			var isFastPath = jsonContext is not null;
 			_FastPathOptions.TypeInfoResolver = jsonContext;
 			var bytes = JsonSerializer.SerializeToUtf8Bytes(value, isFastPath ? _FastPathOptions : _Options);
-			bufferedData = bytes;
 			var content = new ByteArrayContent(bytes);
 			content.Headers.ContentType = new("application/json");
 			return ValueTask.FromResult<HttpContent>(content);
@@ -89,11 +87,10 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly APIInfo<URLProxy, URLDisposer, HttpResponseMessage, HttpClientProxy> context,
-			CancellationToken cancellationToken, out object? bufferedData) {
+			ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context,
+			CancellationToken cancellationToken) {
 			var str = value is null ? "" : QueryString<FormEncoder>.Serialize((IEnumerable<KeyValuePair<string, string?>>)value);
-			bufferedData = str;
-			return ValueTask.FromResult<HttpContent>(new StringContent(str, Encoding.UTF8, new MediaTypeHeaderValue("application/x-www-form-urlencoded")));
+			return ValueTask.FromResult<HttpContent>(new StringContent(str, Encoding.ASCII, new MediaTypeHeaderValue("application/x-www-form-urlencoded")));
 		}
 	}
 }
