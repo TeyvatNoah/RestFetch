@@ -99,6 +99,15 @@ public static class ITypeSymbolExtension {
 		: self;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static ITypeSymbol[] GetTGeneric(this ITypeSymbol? self)
+		=> self is INamedTypeSymbol {
+			IsGenericType: true,
+			TypeArguments.Length: > 0
+		} genericT
+		? genericT.TypeArguments.ToArray()
+		: Array.Empty<ITypeSymbol>();
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool IsNullable(this ITypeSymbol? self)
 		=> self is not null && (self.IsValueType
 			? self is INamedTypeSymbol { IsGenericType: true, OriginalDefinition.SpecialType: SpecialType.System_Nullable_T }
@@ -136,33 +145,62 @@ public static class ITypeSymbolExtension {
 		return false;
 	}
 
-	public static ReturnTypeKind GetAsyncReturnTypeKind(this ITypeSymbol returnType, KnownTypes knownTypes) {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool IsObservable(this ITypeSymbol returnType, KnownTypes knownTypes)
+		=> returnType.SpecialType != SpecialType.System_Void && SymbolEqualityComparer.Default.Equals(returnType.OriginalDefinition, knownTypes.IObservable);
+
+	public static ReturnTypeWrapperKind GetAsyncReturnTypeKind(this ITypeSymbol returnType, KnownTypes knownTypes) {
 		if (returnType.SpecialType == SpecialType.System_Void) {
-			return ReturnTypeKind.Void;
+			return ReturnTypeWrapperKind.Void;
 		}
 
 		var realReturnType = returnType.OriginalDefinition;
 		var comparer = SymbolEqualityComparer.Default;
 		if (comparer.Equals(realReturnType, knownTypes.Task)) {
-			return ReturnTypeKind.Task;
+			return ReturnTypeWrapperKind.Task;
 		} else if (comparer.Equals(realReturnType, knownTypes.TaskT)) {
-			return ReturnTypeKind.TaskT;
+			return ReturnTypeWrapperKind.TaskT;
 		} else if (comparer.Equals(realReturnType, knownTypes.ValueTask)) {
-			return ReturnTypeKind.ValueTask;
+			return ReturnTypeWrapperKind.ValueTask;
 		} else if (comparer.Equals(realReturnType, knownTypes.ValueTask)) {
-			return ReturnTypeKind.ValueTaskT;
+			return ReturnTypeWrapperKind.ValueTaskT;
 		} else if (comparer.Equals(realReturnType, knownTypes.IAsyncEnumerableT)) {
-			return ReturnTypeKind.IAsyncEnumerableT;
+			return ReturnTypeWrapperKind.IAsyncEnumerableT;
+		} else if (comparer.Equals(realReturnType, knownTypes.IObservable)) {
+			return ReturnTypeWrapperKind.IObservableT;
 		}
 
 		if (knownTypes.AsyncMethodBuilderAttribute is not null) {
 			foreach (var attr in realReturnType.GetAttributes()) {
 				if (comparer.Equals(knownTypes.AsyncMethodBuilderAttribute, attr.AttributeClass)) {
-					return ReturnTypeKind.CustomTask;
+					return ReturnTypeWrapperKind.CustomTask;
 				}
 			}
 		}
 
-		return ReturnTypeKind.NotAsync;
+		return ReturnTypeWrapperKind.NotAsync;
+	}
+
+	public static ReturnTypeKind GetResponseTypeKind(this ITypeSymbol returnType, KnownTypes knownTypes, bool returnsRawResponse) {
+		if (returnType.SpecialType == SpecialType.System_Void) {
+			return ReturnTypeKind.Void;
+		}
+
+		if (returnType is INamedTypeSymbol {
+			IsGenericType: true,
+			TypeArguments: [var respType, ..]
+		}) {
+			if (respType.SpecialType == SpecialType.System_String) {
+				return ReturnTypeKind.SystemString;
+			} else if (respType.InheritsFrom(knownTypes.Stream)) {
+				return ReturnTypeKind.Stream;
+			} else if (returnsRawResponse) {
+				return ReturnTypeKind.RawResponse;
+			} else {
+				return ReturnTypeKind.Other;
+			}
+		} else {
+			return ReturnTypeKind.Other;
+		}
 	}
 }

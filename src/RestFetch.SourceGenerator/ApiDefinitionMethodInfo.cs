@@ -19,7 +19,9 @@ public sealed record ApiDefinitionMethodInfo(
 	string HttpMethod,
 	string BaseAddress,
 	string IdGenerator,
-	ReturnTypeKind AsyncReturnTypeKind,
+	ReturnTypeWrapperKind AsyncReturnTypeKind,
+	ReturnTypeKind ResponseTypeKind,
+	TypeInfo? ResponseType,
 	HookInfo? BeforeSendHook,
 	HookInfo? AfterResponseHook,
 	HookInfo HttpClientProxy,
@@ -117,8 +119,8 @@ public sealed record ApiDefinitionMethodInfo(
 		var onSuccess = ApiDefinitionTypeInfo.GetOnSuccess(attrList, knownTypes) ?? apiDefinitionType.OnSuccess;
 		// TODO 应当根据方法的返回类型提供默认值,应当检查返回类型是否被默认反序列化器支持
 		var responseBodyDeserializer = GetResponseBodyDeserializer(attrList, knownTypes) ?? new(
-			FullyQualifiedName: "RestFetch.ResponseBodyDeserializer.Json",
-			FullyQualifiedNameWithGlobal: "global::RestFetch.ResponseBodyDeserializer.Json",
+			FullyQualifiedName: "RestFetch.ResponseBodyDeserializer.Default",
+			FullyQualifiedNameWithGlobal: "global::RestFetch.ResponseBodyDeserializer.Default",
 			ConfigureAwait: false,
 			Diagnostics: null,
 			TypeArguments: null,
@@ -168,16 +170,20 @@ public sealed record ApiDefinitionMethodInfo(
 				returnsRawResponse = true;
 			}
 		}
+		
+		var returnVoid = SymbolEqualityComparer.Default.Equals(symbol.ReturnType.OriginalDefinition, knownTypes.Task)
+			|| SymbolEqualityComparer.Default.Equals(symbol.ReturnType.OriginalDefinition, knownTypes.ValueTask);
 
 		return new(
 			MethodInfo: methodInfo,
 			IsValid: isValid,
-			ReturnsVoid: symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.Task)
-				|| symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.ValueTask),
+			ReturnsVoid: returnVoid,
 			ReturnsIAsyncEnumerableT: symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.IAsyncEnumerableT),
 			ReturnsStream: returnsStream,
 			ReturnsRawResponse: returnsRawResponse,
 			AsyncReturnTypeKind: symbol.ReturnType.GetAsyncReturnTypeKind(knownTypes),
+			ResponseTypeKind: symbol.ReturnType.GetResponseTypeKind(knownTypes, returnsRawResponse),
+			ResponseType: returnVoid ? null : TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(symbol.ReturnType.GetTGeneric()[0], knownTypes),
 			Path: path,
 			PathSegments: pathSegments?.ToImmutableArray(),
 			HttpMethod: httpMethod,

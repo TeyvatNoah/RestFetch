@@ -8,17 +8,37 @@ public static class Emitter {
 	public static string GenerateSource(ApiDefinitionTypeInfo apiDefinition) {
 		using var sourceBuilder = new SourceBuilder();
 		sourceBuilder.CreateFile(sb => {
+			var typeName = apiDefinition.TypeInfo.IsInterface ? $"RestFetchGen{apiDefinition.TypeInfo.Name}" : apiDefinition.TypeInfo.Name;
 			sb.CreateUsing("System.Runtime.CompilerServices");
 			sb.CreateUsing("Cysharp.Text");
 			sb.CreateUsing("RestFetch");
 			sb.CreateNamespace(apiDefinition.TypeInfo.ContainingNamespace);
-			sb.CreateType(RestFetchSourceGenerator.RestFetchNamespaceName, new("1.0.0"), apiDefinition.TypeInfo, sb => sb.CreateIndent(sb => {
+			sb.CreateType(RestFetchSourceGenerator.RestFetchNamespaceName, new("1.0.0"),
+				apiDefinition.TypeInfo with {
+					IsSealed = true
+				},
+				sb => sb.CreateIndent(sb => {
 				// sb.AppendLine($@"public string BaseAddress = ""{apiDefinition.BaseAddress}"";");
 				sb.AppendLine($@"public readonly {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal} Client = {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(""{apiDefinition.BaseAddress}"");")
 				.Append('\n');
-				sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
-				.AppendLine($"public void Dispose() => Client.Dispose();")
+				sb.AppendLine($"private readonly bool _OwnedClient = true;")
 				.Append('\n');
+				sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
+				.AppendLine("public void Dispose() {")
+				.AppendLine("\tif (_OwnedClient) Client.Dispose();")
+				.AppendLine("}\n");
+
+				sb.AppendLine($"public {typeName}(bool sharedClient, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal} client) {{")
+				.AppendLine("\t_OwnedClient = !sharedClient;")
+				.AppendLine("\tClient = client;")
+				.AppendLine("}\n");
+
+				sb.AppendLine($"public {typeName}({apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal} client): this(true, client) {{}}\n");
+
+				sb.AppendLine($@"public {typeName}(): this(true, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(""{apiDefinition.BaseAddress}"")) {{}}")
+				.Append('\n');
+
+
 				foreach (var method in apiDefinition.Methods) {
 					var parameters = method.MethodInfo.Parameters.Zip(method.ApiParameterExtraInfos, static (paramInfo, extraInfo) => (paramInfo, extraInfo))
 						.ToArray();
@@ -60,12 +80,25 @@ public static class Emitter {
 								GenerateExceptionFactory(sb, method, cancellationTokenParam);
 								GenerateResponseDeserializer(sb, method, cancellationTokenParam);
 								GenerateOnSuccess(sb, method, cancellationTokenParam);
+
+								if (!method.ReturnsVoid) {
+									if (method.ReturnsRawResponse) {
+										sb.AppendLine("return __resp;");
+									} else if (method.ReturnsStream) {
+										// TODO
+										sb.AppendLine("return __respBody;");
+									} else if (method.ReturnsIAsyncEnumerableT) {
+										// TODO
+									} else {
+										sb.AppendLine("return __respBody;");
+									}
+								}
 							});
 
 						});
 					});
 				}
-			}), apiDefinition.TypeInfo.IsInterface ? $"RestFetchGen{apiDefinition.TypeInfo.Name}" : null, "IDisposable");
+			}), apiDefinition.TypeInfo.IsInterface ? typeName : null, "IDisposable");
 		});
 		return sourceBuilder.ToString();
 	}
@@ -85,6 +118,7 @@ public static class Emitter {
 					sb.Append($".ConfigureAwait(false)");
 				}
 				sb.Append(";\n");
+				sb.AppendLine("throw;");
 			});
 			sb.AppendLine('}');
 		}
@@ -171,7 +205,11 @@ public static class Emitter {
 
 		foreach (var seg in pathSegments) {
 			if (seg is LiteralSegment literal) {
-				sb.AppendLine($@"__urlBuilder.Append(""{literal.Text}"");");
+				if (literal.Text.Length == 1) {
+					sb.AppendLine($@"__urlBuilder.Append('{literal.Text}');");
+				} else {
+					sb.AppendLine($@"__urlBuilder.Append(""{literal.Text}"");");
+				}
 			} else if (seg is ParamSegment param) {
 				foreach (var (key, value, shouldEncode, serializer) in @params) {
 					if (key == param.RootParamName) {
@@ -368,11 +406,32 @@ public static class Emitter {
 			return;
 		}
 
-		sb.Append($"var __respBody = await {
+		sb.Append($@"var __respBody = await {
 			method.ResponseBodyDeserializer.FullyQualifiedNameWithGlobal
 			}.Parse<{
-				method.MethodInfo.ReturnType.FullyQualifiedNameWithGlobal
-				}>(__resp, in __context, {(method.ResponseBodyDeserializer.JsonContext is null
+				method.ResponseType!.FullyQualifiedNameWithGlobal
+				}>(__resp, new(""{method.ResponseType.MinimallyQualifiedName}"", ""{method.MethodInfo.ReturnType.MinimallyQualifiedName}"", {(
+					method.ResponseTypeKind switch {
+						ReturnTypeKind.Other => "ReturnTypeKind.Other",
+						ReturnTypeKind.RawResponse => "ReturnTypeKind.RawResponse",
+						ReturnTypeKind.Stream => "ReturnTypeKind.Stream",
+						ReturnTypeKind.SystemString => "ReturnTypeKind.SystemString",
+						ReturnTypeKind.Void => "ReturnTypeKind.Void",
+						_ => "",
+					})}, {(
+						method.AsyncReturnTypeKind switch {
+							ReturnTypeWrapperKind.CustomTask => "ReturnTypeWrapperKind.CustomTask",
+							ReturnTypeWrapperKind.IAsyncEnumerableT => "ReturnTypeWrapperKind.IAsyncEnumerableT",
+							ReturnTypeWrapperKind.IObservableT => "ReturnTypeWrapperKind.IObservableT",
+							ReturnTypeWrapperKind.NotAsync => "ReturnTypeWrapperKind.NotAsync",
+							ReturnTypeWrapperKind.Task => "ReturnTypeWrapperKind.Task",
+							ReturnTypeWrapperKind.TaskT => "ReturnTypeWrapperKind.TaskT",
+							ReturnTypeWrapperKind.ValueTask => "ReturnTypeWrapperKind.ValueTask",
+							ReturnTypeWrapperKind.ValueTaskT => "ReturnTypeWrapperKind.ValueTaskT",
+							ReturnTypeWrapperKind.Void => "ReturnTypeWrapperKind.Void",
+							_ => ""
+						}
+					)}), in __context, {(method.ResponseBodyDeserializer.JsonContext is null
 				? "null" : $"{method.ResponseBodyDeserializer.JsonContext}.Default")}, {(cancellationTokenParam is {} token
 			? token.paramInfo.Name
 			: "CancellationToken.None")})", true);
@@ -381,11 +440,11 @@ public static class Emitter {
 		}
 		sb.Append(";\n");
 
-		if (method.MethodInfo.ReturnType.NullableAnnotation != NullableAnnotation.Annotated
-			&& !method.MethodInfo.ReturnType.IsNullable) {
+		if (method.ResponseType.NullableAnnotation != NullableAnnotation.Annotated
+			&& !method.ResponseType.IsNullable) {
 			sb.AppendLine("if (__respBody is null) {");
 			sb.CreateIndent(sb => {
-				sb.AppendLine("ResponseContentNullException.throw();");
+				sb.AppendLine("ResponseContentNullException.Throw();");
 			});
 			sb.AppendLine("}\n");
 		}

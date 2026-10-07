@@ -64,9 +64,9 @@ public sealed class RestFetchSourceGenerator: IIncrementalGenerator {
 			}
 		});
 
-		// if (!Debugger.IsAttached){
-		// 	Debugger.Launch();
-		// }
+		if (!Debugger.IsAttached){
+			Debugger.Launch();
+		}
 
 		// 取得所有[Get]等http attribute修饰的方法所属类
 		var apiDefinitionSymbolProviders = HttpAttributeMetadataNames.Select(attrName =>

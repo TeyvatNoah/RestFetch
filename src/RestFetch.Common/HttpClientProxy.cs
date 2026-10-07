@@ -81,12 +81,24 @@ public sealed class RestFetchOptions {
 }
 
 
-public static class RestFetch<TOptions> where TOptions: IRestFetchOptions {
+public static class RestFetch<THttpClientProxy> where THttpClientProxy: IHttpClientProxy {
 	public static TAPI For<TAPI>(string baseAddress) {
 		throw new NotImplementedException();
 	}
 
-	public static TAPI For<TAPI>(TOptions options) {
+	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) {
+		throw new NotImplementedException();
+	}
+}
+
+public static class RestFetch<TResponse, THttpClientProxy>
+	where TResponse: IDisposable
+	where THttpClientProxy: IHttpClientProxy<TResponse, THttpClientProxy> {
+	public static TAPI For<TAPI>(string baseAddress) {
+		throw new NotImplementedException();
+	}
+
+	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) {
 		throw new NotImplementedException();
 	}
 }
@@ -97,7 +109,7 @@ public static class RestFetch {
 		throw new NotImplementedException();
 	}
 
-	public static TAPI For<TAPI>(RestFetchOptions options) {
+	public static TAPI For<TAPI>(HttpClientProxy httpClientProxy) {
 		throw new NotImplementedException();
 	}
 }

@@ -118,7 +118,7 @@ public sealed class SourceBuilder: IDisposable {
 			if (!type.IsStatic && type.IsAbstract && type.TypeKind == TypeKind.Class) {
 				sb.Append("abstract ");
 			}
-			if (!type.IsStatic && type.IsSealed && type.TypeKind == TypeKind.Class && !type.IsValueType) {
+			if (!type.IsStatic && type.IsSealed && (type.TypeKind == TypeKind.Class || typeName is not null) && !type.IsValueType) {
 				sb.Append("sealed ");
 			}
 

@@ -61,6 +61,7 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? QueryAttributeT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.QueryAttribute`1");
 	public readonly INamedTypeSymbol? JsonSerializerContext = compilation.GetTypeByMetadataName("System.Text.Json.Serialization.JsonSerializerContext");
 	public readonly INamedTypeSymbol? Stream = compilation.GetTypeByMetadataName("System.IO.Stream");
+	public readonly INamedTypeSymbol? IObservable = compilation.GetTypeByMetadataName("System.IObservable`1");
 
 		public override bool Equals(object? obj) => obj is not null && obj is KnownTypes types && Equals(types);
 
@@ -121,7 +122,8 @@ public sealed class KnownTypes(Compilation compilation)
 		QueryAttribute,
 		QueryAttributeT,
 		JsonSerializerContext,
-		Stream
+		Stream,
+		IObservable
 	).GetHashCode();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -179,7 +181,8 @@ public sealed class KnownTypes(Compilation compilation)
 		&& Comparer.Equals(left.QueryAttribute, right.QueryAttribute)
 		&& Comparer.Equals(left.QueryAttributeT, right.QueryAttributeT)
 		&& Comparer.Equals(left.JsonSerializerContext, right.JsonSerializerContext)
-		&& Comparer.Equals(left.Stream, right.Stream);
+		&& Comparer.Equals(left.Stream, right.Stream)
+		&& Comparer.Equals(left.IObservable, right.IObservable) ;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool operator !=(KnownTypes left, KnownTypes right) => !(left == right);
