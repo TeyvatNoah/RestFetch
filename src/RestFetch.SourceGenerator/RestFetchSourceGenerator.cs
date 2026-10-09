@@ -97,8 +97,9 @@ public sealed class RestFetchSourceGenerator: IIncrementalGenerator {
 			});
 
 		var validApiDefinitionProvider = apiDefinitionInfoProvider.Where(static e => e.IsValid);
-		var partialTypeProvider = validApiDefinitionProvider.Where(static e => e.TypeInfo.IsPartial);
-		var interfaceProvider = validApiDefinitionProvider.Where(static e => e.TypeInfo.IsInterface);
+		var partialTypeProvider = validApiDefinitionProvider.Where(static e => e.TypeInfo.IsPartial
+			&& (e.TypeInfo.TypeKind == TypeKind.Class || e.TypeInfo.TypeKind == TypeKind.Struct));
+		var interfaceProvider = validApiDefinitionProvider.Where(static e => e.TypeInfo.IsPartial && e.TypeInfo.IsInterface);
 
 		var diagnosticProvider = apiDefinitionInfoProvider
 			.Where(static apiDefinitionInfo => apiDefinitionInfo.Diagnostics is not null)

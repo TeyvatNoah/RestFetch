@@ -55,7 +55,7 @@
 			"type": "process",
 			"args": [
 				"build",
-				"${workspaceFolder}/src/Tests/Tests.csproj",
+				"${workspaceFolder}/src/RestFetch.Tests/RestFetch.Tests.csproj",
 				"-c",
 				"Debug",
 			],
@@ -67,7 +67,7 @@
 			"type": "process",
 			"args": [
 				"build",
-				"${workspaceFolder}/src/Examples/Examples.csproj",
+				"${workspaceFolder}/src/RestFetch.Examples/RestFetch.Examples.csproj",
 				"-c",
 				"Debug",
 			],
@@ -79,7 +79,7 @@
 			"type": "process",
 			"args": [
 				"build",
-				"${workspaceFolder}/src/Common/Common.csproj",
+				"${workspaceFolder}/src/RestFetch.Common/RestFetch.Common.csproj",
 				"-c",
 				"Debug",
 			],

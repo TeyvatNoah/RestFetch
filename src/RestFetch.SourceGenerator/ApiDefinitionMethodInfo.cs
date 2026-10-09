@@ -53,7 +53,7 @@ public sealed record ApiDefinitionMethodInfo(
 
 	private static readonly DiagnosticDescriptor HookRule6 = new("RestFetch0026",
 		"错误的Response类型",
-		"Response<TDeserializer>中TDeserializer必须实现IResponseBodyDeserializer或IResponseBodyDeserializer<TResponse, TProxy>",
+		"Response<TDeserializer>中TDeserializer必须实现IResponseBodyDeserializer或IResponseBodyDeserializer<TResponse>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HttpMethodRule0 = new("RestFetch0040",
@@ -170,7 +170,7 @@ public sealed record ApiDefinitionMethodInfo(
 				returnsRawResponse = true;
 			}
 		}
-		
+
 		var returnVoid = SymbolEqualityComparer.Default.Equals(symbol.ReturnType.OriginalDefinition, knownTypes.Task)
 			|| SymbolEqualityComparer.Default.Equals(symbol.ReturnType.OriginalDefinition, knownTypes.ValueTask);
 

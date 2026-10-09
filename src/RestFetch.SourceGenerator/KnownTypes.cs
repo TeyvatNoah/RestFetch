@@ -16,33 +16,31 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? MetadataAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.MetadataAttribute");
 	public readonly INamedTypeSymbol? ResponseAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseAttribute`1");
 	public readonly INamedTypeSymbol? ResponseBodyDeserializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseBodyDeserializer")!;
-	public readonly INamedTypeSymbol? ResponseBodyGenericDeserializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.,IResponseBodyDeserializer`4");
+	public readonly INamedTypeSymbol? ResponseBodyGenericDeserializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.,IResponseBodyDeserializer`1");
 	public readonly INamedTypeSymbol? HttpMethodAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpMethodAttribute");
 	public readonly INamedTypeSymbol? BaseAddress = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.BaseAddressAttribute");
 	public readonly INamedTypeSymbol? HeaderAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.HeaderAttribute");
 	public readonly INamedTypeSymbol? IdGeneratorAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IdGeneratorAttribute`1");
 	public readonly INamedTypeSymbol? BeforeSendAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.BeforeSendAttribute`1");
 	public readonly INamedTypeSymbol? BeforeSendHookInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IBeforeSendHook");
-	public readonly INamedTypeSymbol? BeforeSendHookGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IBeforeSendHook`3");
+	public readonly INamedTypeSymbol? BeforeSendHookGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IBeforeSendHook`1");
 	public readonly INamedTypeSymbol? AfterResponseAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.AfterResponseAttribute`1");
 	public readonly INamedTypeSymbol? AfterResponseHookInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IAfterResponseHook");
-	public readonly INamedTypeSymbol? AfterResponseHookGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IAfterResponseHook`2");
+	public readonly INamedTypeSymbol? AfterResponseHookGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IAfterResponseHook`1");
 	public readonly INamedTypeSymbol? ExceptionFactoryAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ExceptionFactoryAttribute`1");
 	public readonly INamedTypeSymbol? ExceptionFactoryInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IExceptionFactory");
-	public readonly INamedTypeSymbol? ExceptionFactoryGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IExceptionFactory`2");
+	public readonly INamedTypeSymbol? ExceptionFactoryGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IExceptionFactory`1");
 	public readonly INamedTypeSymbol? HttpClientProxyAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxyAttribute`1");
 	public readonly INamedTypeSymbol? HttpClientProxyInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy");
 	public readonly INamedTypeSymbol? HttpClientProxyGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy`2");
 	public readonly INamedTypeSymbol? OnErrorAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.OnErrorAttribute`1");
 	public readonly INamedTypeSymbol? OnErrorInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IOnError");
-	public readonly INamedTypeSymbol? OnErrorGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IOnError`2");
 	public readonly INamedTypeSymbol? OnSuccessAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.OnSuccessAttribute`1");
 	public readonly INamedTypeSymbol? OnSuccessInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IOnSuccess");
-	public readonly INamedTypeSymbol? OnSuccessGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IOnSuccess`2");
 	public readonly INamedTypeSymbol? CancellationToken = compilation.GetTypeByMetadataName("System.Threading.CancellationToken");
 	public readonly INamedTypeSymbol? RequestBodySerializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRequestBodySerializer");
-	public readonly INamedTypeSymbol? RequestBodySerializer5 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRequestBodySerializer`3");
-	public readonly INamedTypeSymbol? RequestBodySerializer6 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRequestBodySerializer`4");
+	public readonly INamedTypeSymbol? RequestBodySerializer5 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRequestBodySerializer`1");
+	public readonly INamedTypeSymbol? RequestBodySerializer6 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRequestBodySerializer`2");
 	public readonly INamedTypeSymbol? ParamSerializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IParamSerializer`2");
 	public readonly INamedTypeSymbol? ParamEncodeSerializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IParamEncodeSerializer`2");
 	public readonly INamedTypeSymbol? QueryString = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.WebUtilities.QueryString");
@@ -97,10 +95,8 @@ public sealed class KnownTypes(Compilation compilation)
 		HttpClientProxyGenericInterface,
 		OnErrorAttribute,
 		OnErrorInterface,
-		OnErrorGenericInterface,
 		OnSuccessAttribute,
 		OnSuccessInterface,
-		OnSuccessGenericInterface,
 		CancellationToken,
 		RequestBodySerializer,
 		RequestBodySerializer5,
@@ -156,10 +152,8 @@ public sealed class KnownTypes(Compilation compilation)
 		&& Comparer.Equals(left.HttpClientProxyGenericInterface, right.HttpClientProxyGenericInterface)
 		&& Comparer.Equals(left.OnErrorAttribute, right.OnErrorAttribute)
 		&& Comparer.Equals(left.OnErrorInterface, right.OnErrorInterface)
-		&& Comparer.Equals(left.OnErrorGenericInterface, right.OnErrorGenericInterface)
 		&& Comparer.Equals(left.OnSuccessAttribute, right.OnSuccessAttribute)
 		&& Comparer.Equals(left.OnSuccessInterface, right.OnSuccessInterface)
-		&& Comparer.Equals(left.OnSuccessGenericInterface, right.OnSuccessGenericInterface)
 		&& Comparer.Equals(left.CancellationToken, right.CancellationToken)
 		&& Comparer.Equals(left.RequestBodySerializer, right.RequestBodySerializer)
 		&& Comparer.Equals(left.RequestBodySerializer5, right.RequestBodySerializer5)

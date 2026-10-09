@@ -55,7 +55,7 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context,
+			ref readonly APIContext context,
 			CancellationToken cancellationToken) {
 			var isFastPath = jsonContext is not null;
 			_FastPathOptions.TypeInfoResolver = jsonContext;
@@ -71,7 +71,7 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 		JsonSerializerContext? jsonContext,
-		ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context,
+		ref readonly APIContext context,
 		CancellationToken cancellationToken) {
 			var isFastPath = jsonContext is not null;
 			_FastPathOptions.TypeInfoResolver = jsonContext;
@@ -87,7 +87,7 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context,
+			ref readonly APIContext context,
 			CancellationToken cancellationToken) {
 			var str = value is null ? "" : QueryString<FormEncoder>.Serialize((IEnumerable<KeyValuePair<string, string?>>)value);
 			return ValueTask.FromResult<HttpContent>(new StringContent(str, Encoding.ASCII, new MediaTypeHeaderValue("application/x-www-form-urlencoded")));

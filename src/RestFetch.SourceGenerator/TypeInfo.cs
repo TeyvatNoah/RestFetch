@@ -79,6 +79,8 @@ public sealed record TypeInfo(
 	string FullyQualifiedNameWithGlobalAndWhereClauses,
 	// 类名带泛型,不带命名空间
 	string MinimallyQualifiedName,
+	// 嵌套类命名空间前缀
+	string ContainingFullName,
 	// where泛型约束
 	string? WhereClauses,
 	// 是interface还是partial class还是partial struct
@@ -114,6 +116,7 @@ public sealed record TypeInfo(
 		var newDepth = depth - 1;
 		if (symbol is INamedTypeSymbol typeSymbol) {
 			return new(
+				ContainingFullName: typeSymbol.ContainingSymbol?.ToDisplayString(FullyQualifiedFormat) ?? "",
 				IsElementNullable: false,
 				IsArray: false,
 				IsTypeParameter: false,
@@ -170,6 +173,7 @@ public sealed record TypeInfo(
 	public static TypeInfo CreateFromSymbolWithoutMethods(ITypeSymbol symbol, KnownTypes knownTypes) {
 		if (symbol is INamedTypeSymbol typeSymbol) {
 			return new(
+				ContainingFullName: typeSymbol.ContainingSymbol?.ToDisplayString(FullyQualifiedFormat) ?? "",
 				IsElementNullable: false,
 				IsArray: false,
 				IsTypeParameter: false,
@@ -226,6 +230,7 @@ public sealed record TypeInfo(
 	public static TypeInfo CreateFromSymbolWithoutBaseTypeAndMethods(ITypeSymbol symbol, KnownTypes knownTypes) {
 		if (symbol is INamedTypeSymbol typeSymbol) {
 			return new(
+				ContainingFullName: typeSymbol.ContainingSymbol?.ToDisplayString(FullyQualifiedFormat) ?? "",
 				IsElementNullable: false,
 				IsArray: false,
 				IsTypeParameter: false,
@@ -272,6 +277,7 @@ public sealed record TypeInfo(
 			);
 		} else if (symbol is IArrayTypeSymbol arraySymbol) {
 			return new(
+				ContainingFullName: arraySymbol.ContainingSymbol?.ToDisplayString(FullyQualifiedFormat) ?? "",
 				IsElementNullable: arraySymbol.ElementNullableAnnotation == NullableAnnotation.Annotated,
 				IsArray: true,
 				IsTypeParameter: false,
@@ -318,6 +324,7 @@ public sealed record TypeInfo(
 			);
 		} else if (symbol is ITypeParameterSymbol typeParamSymbol) {
 			return new(
+				ContainingFullName: typeParamSymbol.ContainingSymbol?.ToDisplayString(FullyQualifiedFormat) ?? "",
 				IsElementNullable: false,
 				IsArray: false,
 				IsTypeParameter: true,
@@ -364,6 +371,7 @@ public sealed record TypeInfo(
 			);
 		} else {
 			return new(
+				ContainingFullName: symbol.ContainingSymbol?.ToDisplayString(FullyQualifiedFormat) ?? "",
 				IsElementNullable: false,
 				IsArray: false,
 				IsTypeParameter: false,

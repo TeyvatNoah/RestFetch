@@ -13,7 +13,7 @@ public sealed record ApiDefinitionTypeInfo(
 	string BaseAddress,
 	string IdGenerator,
 	string TResponse,
-	string TProxy,
+	string THttpClientProxy,
 	string TRequestBodyContent,
 	HookInfo? BeforeSendHook,
 	HookInfo? AfterResponseHook,
@@ -26,7 +26,7 @@ public sealed record ApiDefinitionTypeInfo(
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
 	private const string TResponseName = "global::System.Net.Http.HttpResponseMessage";
-	private const string TProxyName = "global::RestFetch.HttpClientProxy";
+	private const string THttpClientProxyName = "global::RestFetch.HttpClientProxy";
 	private const string TRequestBodyContentName = "global::System.Net.Http.HttpResponseMessage";
 
 	private static readonly DiagnosticDescriptor HeaderRule0 = new("RestFetch0010",
@@ -36,32 +36,32 @@ public sealed record ApiDefinitionTypeInfo(
 
 	private static readonly DiagnosticDescriptor HookRule0 = new("RestFetch0020",
 		"错误的BeforeSendHook类型",
-		"BeforeSend<THook>中THook必须实现IBeforeSendHook或IBeforeSendHook<TRequestBodyContent, TResponse, TProxy>",
+		"BeforeSend<THook>中THook必须实现IBeforeSendHook或IBeforeSendHook<TRequestBodyContent>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule1 = new("RestFetch0021",
 		"错误的AfterResponseHook类型",
-		"AfterResponse<THook>中THook必须实现IAfterResponseHook或IAfterResponseHook<TResponse, TProxy>",
+		"AfterResponse<THook>中THook必须实现IAfterResponseHook或IAfterResponseHook<TResponse>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule2 = new("RestFetch0022",
 		"错误的ExceptionFactory类型",
-		"ExceptionFactory<THook>中THook必须实现IExceptionFactory或IExceptionFactory<TResponse, TProxy>",
+		"ExceptionFactory<THook>中THook必须实现IExceptionFactory或IExceptionFactory<TResponse>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule3 = new("RestFetch0023",
 		"错误的HttpClientProxy类型",
-		"HttpClientProxy<THook>中THook必须实现IHttpClientProxy或IHttpClientProxy<TResponse, TProxy>",
+		"HttpClientProxy<THook>中THook必须实现IHttpClientProxy或IHttpClientProxy<TResponse, THttpClientProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule4 = new("RestFetch0024",
 		"错误的OnError类型",
-		"OnError<THook>中THook必须实现IOnError或IOnError<TResponse, TProxy>",
+		"OnError<THook>中THook必须实现IOnError",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule5 = new("RestFetch0025",
 		"错误的OnSuccess类型",
-		"OnSuccess<THook>中THook必须实现IOnSuccess或IOnSuccess<TResponse, TProxy>",
+		"OnSuccess<THook>中THook必须实现IOnSuccess",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	public static ApiDefinitionTypeInfo CreateFromSymbol(ITypeSymbol symbol, KnownTypes knownTypes) {
@@ -95,7 +95,7 @@ public sealed record ApiDefinitionTypeInfo(
 			ConfigureAwait: false,
 			TypeArguments: new string[] {
 				TResponseName,
-				TProxyName
+				THttpClientProxyName
 			}.ToImmutableArray(),
 			Diagnostics: null
 		);
@@ -103,7 +103,7 @@ public sealed record ApiDefinitionTypeInfo(
 		var onSuccess = GetOnSuccess(attrList, knownTypes);
 		var tempApiDefinition = new ApiDefinitionTypeInfo(
 			TResponse: httpClientProxy.TypeArguments?[0] ?? TResponseName,
-			TProxy: httpClientProxy.TypeArguments?[1] ?? TProxyName,
+			THttpClientProxy: httpClientProxy.TypeArguments?[1] ?? THttpClientProxyName,
 			TRequestBodyContent: beforeSendHook?.TypeArguments?[0] ?? TRequestBodyContentName,
 			IsValid: false,
 			TypeInfo: typeInfo,
@@ -308,10 +308,9 @@ public sealed record ApiDefinitionTypeInfo(
 			return null;
 		}
 		var onErrorInterface = knownTypes.OnErrorInterface;
-		var onErrorGenericInterface = knownTypes.OnSuccessGenericInterface;
 		var targetType = onErrorAttr.AttributeClass.TypeArguments[0];
 		var configureAwait = !onErrorAttr.NamedArguments.IsEmpty && (bool)onErrorAttr.NamedArguments[0].Value.Value!;
-		return targetType.ImplementsInterface(onErrorInterface) || targetType.ImplementsInterface(onErrorGenericInterface)
+		return targetType.ImplementsInterface(onErrorInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
@@ -335,10 +334,9 @@ public sealed record ApiDefinitionTypeInfo(
 			return null;
 		}
 		var onSuccessInterface = knownTypes.OnSuccessInterface;
-		var onSuccessGenericInterface = knownTypes.OnSuccessGenericInterface;
 		var targetType = onSuccessAttr.AttributeClass.TypeArguments[0];
 		var configureAwait = !onSuccessAttr.NamedArguments.IsEmpty && (bool)onSuccessAttr.NamedArguments[0].Value.Value!;
-		return targetType.ImplementsInterface(onSuccessInterface) || targetType.ImplementsInterface(onSuccessGenericInterface)
+		return targetType.ImplementsInterface(onSuccessInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),

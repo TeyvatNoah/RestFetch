@@ -13,7 +13,9 @@ public sealed class HttpClientProxy(bool sharedHandler, HttpMessageHandler handl
 
 	private readonly HttpClient _Client = new(handler);
 
-	public required string BaseAddress { get => _Client.BaseAddress?.ToString() ?? ""; set => _Client.BaseAddress = new(value); }
+	public required string BaseAddress { get => _Client.BaseAddress?.ToString() ?? ""; set => _Client.BaseAddress = new(value, new UriCreationOptions() {
+		DangerousDisablePathAndQueryCanonicalization = true
+	}); }
 
 	public static readonly SocketsHttpHandler SharedDefaultHandler = new() {
 		AllowAutoRedirect = true,
@@ -43,7 +45,7 @@ public sealed class HttpClientProxy(bool sharedHandler, HttpMessageHandler handl
 
 	public HttpClientProxy(HttpMessageHandler handler): this(true, handler) => _Client = new(handler);
 
-	public Task<HttpResponseMessage> SendAsync<TRequestBodyContent>(ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context, Dictionary<string, string>? headers, TRequestBodyContent? body, CancellationToken token) {
+	public Task<HttpResponseMessage> SendAsync<TRequestBodyContent>(ref readonly APIContext context, Dictionary<string, string>? headers, TRequestBodyContent? body, CancellationToken token) {
 		using var msg = new HttpRequestMessage(context.HttpMethod, context.URL);
 		if (headers is not null) {
 			foreach (var (key, value) in headers) {
@@ -81,35 +83,35 @@ public sealed class RestFetchOptions {
 }
 
 
-public static class RestFetch<THttpClientProxy> where THttpClientProxy: IHttpClientProxy {
-	public static TAPI For<TAPI>(string baseAddress) {
-		throw new NotImplementedException();
-	}
+public static class RestFetchService<THttpClientProxy> where THttpClientProxy: IHttpClientProxy {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchAPI<TAPI>
+		=> TAPI.Create(baseAddress);
 
-	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) {
-		throw new NotImplementedException();
-	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) where TAPI: IRestFetchAPI<TAPI>
+		=> TAPI.Create(httpClientProxy);
 }
 
-public static class RestFetch<TResponse, THttpClientProxy>
+public static class RestFetchService<TResponse, THttpClientProxy>
 	where TResponse: IDisposable
 	where THttpClientProxy: IHttpClientProxy<TResponse, THttpClientProxy> {
-	public static TAPI For<TAPI>(string baseAddress) {
-		throw new NotImplementedException();
-	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchAPI<TAPI, TResponse, THttpClientProxy>
+		=> TAPI.Create(baseAddress);
 
-	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) {
-		throw new NotImplementedException();
-	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) where TAPI: IRestFetchAPI<TAPI, TResponse, THttpClientProxy>
+		=> TAPI.Create(httpClientProxy);
 }
 
 
-public static class RestFetch {
-	public static TAPI For<TAPI>(string baseAddress) {
-		throw new NotImplementedException();
-	}
+public static class RestFetchService {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchAPI<TAPI>
+		=> TAPI.Create(baseAddress);
 
-	public static TAPI For<TAPI>(HttpClientProxy httpClientProxy) {
-		throw new NotImplementedException();
-	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static TAPI For<TAPI>(HttpClientProxy httpClientProxy) where TAPI: IRestFetchAPI<TAPI>
+		=> TAPI.Create(httpClientProxy);
 }

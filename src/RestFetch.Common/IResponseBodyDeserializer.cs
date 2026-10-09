@@ -2,13 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace RestFetch;
 
-public interface IResponseBodyDeserializer<TResponse, TProxy>
-	where TResponse: IDisposable
-	where TProxy: IHttpClientProxy<TResponse, TProxy>{
-	static abstract Task<TResponseBody?> Parse<TResponseBody>(TResponse resp, ReturnTypeInfo returnTypeInfo, ref readonly APIContext<TResponse, TProxy> context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken);
+public interface IResponseBodyDeserializer<TResponse> where TResponse: IDisposable {
+	static abstract Task<TResponseBody?> Parse<TResponseBody>(TResponse resp, ReturnTypeInfo returnTypeInfo, ref readonly APIContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken);
 }
 
-public interface IResponseBodyDeserializer: IResponseBodyDeserializer<HttpResponseMessage, HttpClientProxy>;
+public interface IResponseBodyDeserializer: IResponseBodyDeserializer<HttpResponseMessage>;
 
 
 // TODO Task不支持协变

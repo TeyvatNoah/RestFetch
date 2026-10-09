@@ -90,15 +90,8 @@ public sealed class SourceBuilder: IDisposable {
 	}
 
 	// typeName给interface生成对应类型时指定类型名
-	public SourceBuilder CreateType(string ns, Version version, TypeInfo type, Action<SourceBuilder>? fillContent, string? typeName = null, string? iface = null) {
+	public SourceBuilder CreateType(string ns, Version version, TypeInfo type, Action<SourceBuilder>? fillContent, bool withContainingType, string? typeName = null, string? iface = null) {
 		static void AppendTypeHeader(SourceBuilder sb, string ns, Version version, TypeInfo type, string? typeName, string? @interface) {
-			sb.AppendLine("[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]")
-			.Append($@"[global::System.CodeDom.Compiler.GeneratedCodeAttribute(""", true)
-			.Append(ns)
-			.Append(@""", """)
-			.Append(version.ToString())
-			.Append(@""")]")
-			.Append('\n');
 
 			var accessibility = type.DeclaredAccessibility switch {
 				Accessibility.Public => "public ",
@@ -178,22 +171,51 @@ public sealed class SourceBuilder: IDisposable {
 				}
 			}
 
-			sb.Append(" {");
+			sb.Append(" {\n");
 		}
 
-		if (type.ContainingType is null) {
+
+		SourceBuilder CreateTypeInternal(string ns, Version version, string innerTypeName, TypeInfo type, Action<SourceBuilder>? fillContent, string? typeName = null, string? iface = null) {
+			if (type.ContainingType is null) {
+				AppendTypeHeader(this, ns, version, type, typeName, iface);
+				fillContent?.Invoke(this);
+				AppendLine("}\n");
+				return this;
+			} else {
+				return CreateTypeInternal(ns, version, innerTypeName, type.ContainingType,
+					sb => sb.CreateIndent(sb => {
+						if (type.MinimallyQualifiedName == innerTypeName) {
+							AppendLine("[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]")
+							.Append($@"[global::System.CodeDom.Compiler.GeneratedCodeAttribute(""", true)
+							.Append(ns)
+							.Append(@""", """)
+							.Append(version.ToString())
+							.Append(@""")]")
+							.Append('\n');
+						}
+						AppendTypeHeader(sb, ns, version, type, typeName, iface);
+						fillContent?.Invoke(sb);
+						sb.AppendLine("}\n");
+				}), null, null);
+			}
+		}
+
+		if (withContainingType) {
+			return CreateTypeInternal(ns, version, type.MinimallyQualifiedName, type, fillContent, typeName, iface);
+		} else {
+			AppendLine("[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]")
+			.Append($@"[global::System.CodeDom.Compiler.GeneratedCodeAttribute(""", true)
+			.Append(ns)
+			.Append(@""", """)
+			.Append(version.ToString())
+			.Append(@""")]")
+			.Append('\n');
 			AppendTypeHeader(this, ns, version, type, typeName, iface);
 			fillContent?.Invoke(this);
-			AppendLine('}');
+			AppendLine("}\n");
 			return this;
-		} else {
-			return CreateType(ns, version, type.ContainingType,
-				sb => sb.CreateIndent(sb => {
-					AppendTypeHeader(sb, ns, version, type, typeName, iface);
-					fillContent?.Invoke(sb);
-					sb.AppendLine('}');
-			}), null, null);
 		}
+
 	}
 
 

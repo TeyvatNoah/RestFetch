@@ -37,13 +37,16 @@ public sealed class ResponseBodyDeserializer {
 		}
 	};
 
-		public sealed class Json : IResponseBodyDeserializer {
-			[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026")]
+#pragma warning disable CA1716 // Identifiers should not match keywords
+		public sealed class Default : IResponseBodyDeserializer {
+#pragma warning restore CA1716 // Identifiers should not match keywords
+				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026")]
 			[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 			[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HttpContentJsonExtensions))]
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public static Task<TResponseBody?> Parse<TResponseBody>(HttpResponseMessage resp,
-				ref readonly APIContext<HttpResponseMessage, HttpClientProxy> context,
+				ReturnTypeInfo returnTypeInfo,
+				ref readonly APIContext context,
 				JsonSerializerContext? jsonContext,
 				CancellationToken cancellationToken) {
 				if (resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0) {

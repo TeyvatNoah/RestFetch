@@ -23,7 +23,7 @@ public record ApiParameterExtraInfo(
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule2 = new("RestFetch0052",
 		"错误的请求body序列化器",
-		@"{0}必须实现IRequestBodySerializer或IRequestBodySerializer<TRequestBodyContent, TResponse, TProxy>或IRequestBodySerializer<TRequestBody, TRequestBodyContent, TResponse, TProxy>",
+		@"{0}必须实现IRequestBodySerializer或IRequestBodySerializer<TRequestBodyContent>或IRequestBodySerializer<TRequestBody, TRequestBodyContent>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule3 = new("RestFetch0053",
 		"错误的请求param序列化器",

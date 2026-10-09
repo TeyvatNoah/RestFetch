@@ -5,100 +5,134 @@ using Microsoft.CodeAnalysis;
 namespace RestFetch.SourceGenerator;
 
 public static class Emitter {
+	private const string GeneratedClassNamePrefix = "RestFetchGen";
 	public static string GenerateSource(ApiDefinitionTypeInfo apiDefinition) {
 		using var sourceBuilder = new SourceBuilder();
 		sourceBuilder.CreateFile(sb => {
-			var typeName = apiDefinition.TypeInfo.IsInterface ? $"RestFetchGen{apiDefinition.TypeInfo.Name}" : apiDefinition.TypeInfo.Name;
+			static void GenerateType(SourceBuilder sb, ApiDefinitionTypeInfo apiDefinition, bool withContainingType, string typeNameFullyQualifiedNameWithGlobal, string? typeName = null) {
+				sb.CreateType(RestFetchSourceGenerator.RestFetchNamespaceName, new("1.0.0"),
+					apiDefinition.TypeInfo with {
+						IsSealed = true
+					},
+					sb => sb.CreateIndent(sb => {
+					// sb.AppendLine($@"public string BaseAddress = ""{apiDefinition.BaseAddress}"";");
+					sb.AppendLine($@"public readonly IHttpClientProxy<{apiDefinition.TResponse}, {apiDefinition.THttpClientProxy}> Client;")
+					.Append('\n');
+					sb.AppendLine($"private readonly bool _OwnedClient = true;")
+					.Append('\n');
+					sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
+					.AppendLine("public void Dispose() {")
+					.AppendLine("\tif (_OwnedClient) Client.Dispose();")
+					.AppendLine("}\n");
+
+					sb.AppendLine($"public {typeName}(bool sharedClient, IHttpClientProxy<{apiDefinition.TResponse}, {apiDefinition.THttpClientProxy}> client) {{")
+					.AppendLine("\t_OwnedClient = !sharedClient;")
+					.AppendLine("\tClient = client;")
+					.AppendLine("}\n");
+
+					sb.AppendLine($"public {typeName}(IHttpClientProxy<{apiDefinition.TResponse}, {apiDefinition.THttpClientProxy}> client): this(true, client) {{}}\n");
+
+					sb.AppendLine($@"public {typeName}(): this(true, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(""{apiDefinition.BaseAddress}"")) {{}}")
+					.Append('\n');
+
+					sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
+						.AppendLine($@"public static {typeNameFullyQualifiedNameWithGlobal} Create(string baseAddress) => new(true, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(baseAddress));")
+						.AppendLine("")
+						.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
+						.AppendLine($@"public static {typeNameFullyQualifiedNameWithGlobal} Create(IHttpClientProxy<{apiDefinition.TResponse}, {apiDefinition.THttpClientProxy}> client) => new(true, client);")
+						.AppendLine("")
+						.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
+						.AppendLine($@"public static {typeNameFullyQualifiedNameWithGlobal} Create(bool sharedClient, IHttpClientProxy<{apiDefinition.TResponse}, {apiDefinition.THttpClientProxy}> client) => new(sharedClient, client);");
+
+
+					foreach (var method in apiDefinition.Methods) {
+						var parameters = method.MethodInfo.Parameters.Zip(method.ApiParameterExtraInfos, static (paramInfo, extraInfo) => (paramInfo, extraInfo))
+							.ToArray();
+						(ParameterInfo, CancellationTokenParameter)? cancellationTokenParam = parameters
+							.Where(static p => p.extraInfo is CancellationTokenParameter)
+							.Select(static p => (p.paramInfo, extraInfo: (CancellationTokenParameter)p.extraInfo))
+							.ToArray() is [var firstCancellation, ..] ? firstCancellation : null;
+						(ParameterInfo, BodyParameter)? bodyParam = parameters
+							.Where(static p => p.extraInfo is BodyParameter)
+							.Select(static p => (p.paramInfo, extraInfo: (BodyParameter)p.extraInfo))
+							.ToArray() is [var firstBody, ..] ? firstBody : null;
+
+						sb.CreateMethod(RestFetchSourceGenerator.RestFetchNamespaceName, new("1.0.0"), method.MethodInfo, sb => {
+							sb.CreateIndent(sb => {
+								sb.AppendLine($"var __requestId = {method.IdGenerator}.NextId();");
+
+								var hasMetadata = GenerateMetadata(sb, method, parameters);
+
+								var hasHeaders = GenerateHeaders(sb, method, parameters);
+
+								GenerateAPIContext(sb, apiDefinition, method, hasMetadata);
+
+								GenerateOnError(sb, method, cancellationTokenParam, () => {
+									sb.AppendLine("using var __urlBuilder = ZString.CreateStringBuilder();");
+									if (string.IsNullOrEmpty(method.BaseAddress)) {
+										sb.AppendLine("__urlBuilder.Append(Client.BaseAddress);");
+									} else {
+										sb.AppendLine($@"__urlBuilder.Append(""{method.BaseAddress}"");");
+									}
+
+
+									GenerateParams(sb, method.PathSegments?.ToArray(), parameters);
+									GenerateQueryString(sb, parameters);
+									sb.AppendLine("__context.URL = __urlBuilder.ToString();");
+									GenerateRequestBodySerializer(sb, bodyParam, cancellationTokenParam);
+									GenerateBeforeSend(sb, method, bodyParam, cancellationTokenParam);
+									GenerateSendAsync(sb, method, bodyParam, cancellationTokenParam, hasHeaders);
+									GenerateAfterResponse(sb, method, cancellationTokenParam);
+									GenerateExceptionFactory(sb, method, cancellationTokenParam);
+									GenerateResponseDeserializer(sb, method, cancellationTokenParam);
+									GenerateOnSuccess(sb, method, cancellationTokenParam);
+
+									if (!method.ReturnsVoid) {
+										if (method.ReturnsRawResponse) {
+											sb.AppendLine("return __resp;");
+										} else if (method.ReturnsStream) {
+											// TODO
+											sb.AppendLine("return __respBody;");
+										} else if (method.ReturnsIAsyncEnumerableT) {
+											// TODO
+										} else {
+											sb.AppendLine("return __respBody;");
+										}
+									}
+								});
+
+							});
+						});
+					}
+				}), withContainingType, apiDefinition.TypeInfo.IsInterface ? typeName : null, "IDisposable");
+			}
+			var typeName = apiDefinition.TypeInfo.IsInterface ? $"Impl" : apiDefinition.TypeInfo.Name;
+			var typeNameFullyQualifiedNameWithGlobal = apiDefinition.TypeInfo.IsInterface ? $"{apiDefinition.TypeInfo.FullyQualifiedNameWithGlobal}.{(
+				apiDefinition.TypeInfo.IsGenericType && !apiDefinition.TypeInfo.TypeParameters.IsEmpty
+				? $"{typeName}<{string.Join(", ", apiDefinition.TypeInfo.TypeArguments.Select(static t => t.Name))}>"
+				: typeName)}" : apiDefinition.TypeInfo.FullyQualifiedNameWithGlobal;
 			sb.CreateUsing("System.Runtime.CompilerServices");
 			sb.CreateUsing("Cysharp.Text");
 			sb.CreateUsing("RestFetch");
 			sb.CreateNamespace(apiDefinition.TypeInfo.ContainingNamespace);
-			sb.CreateType(RestFetchSourceGenerator.RestFetchNamespaceName, new("1.0.0"),
-				apiDefinition.TypeInfo with {
-					IsSealed = true
-				},
-				sb => sb.CreateIndent(sb => {
-				// sb.AppendLine($@"public string BaseAddress = ""{apiDefinition.BaseAddress}"";");
-				sb.AppendLine($@"public readonly {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal} Client = {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(""{apiDefinition.BaseAddress}"");")
-				.Append('\n');
-				sb.AppendLine($"private readonly bool _OwnedClient = true;")
-				.Append('\n');
-				sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
-				.AppendLine("public void Dispose() {")
-				.AppendLine("\tif (_OwnedClient) Client.Dispose();")
-				.AppendLine("}\n");
 
-				sb.AppendLine($"public {typeName}(bool sharedClient, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal} client) {{")
-				.AppendLine("\t_OwnedClient = !sharedClient;")
-				.AppendLine("\tClient = client;")
-				.AppendLine("}\n");
-
-				sb.AppendLine($"public {typeName}({apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal} client): this(true, client) {{}}\n");
-
-				sb.AppendLine($@"public {typeName}(): this(true, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(""{apiDefinition.BaseAddress}"")) {{}}")
-				.Append('\n');
-
-
-				foreach (var method in apiDefinition.Methods) {
-					var parameters = method.MethodInfo.Parameters.Zip(method.ApiParameterExtraInfos, static (paramInfo, extraInfo) => (paramInfo, extraInfo))
-						.ToArray();
-					(ParameterInfo, CancellationTokenParameter)? cancellationTokenParam = parameters
-						.Where(static p => p.extraInfo is CancellationTokenParameter)
-						.Select(static p => (p.paramInfo, extraInfo: (CancellationTokenParameter)p.extraInfo))
-						.ToArray() is [var firstCancellation, ..] ? firstCancellation : null;
-					(ParameterInfo, BodyParameter)? bodyParam = parameters
-						.Where(static p => p.extraInfo is BodyParameter)
-						.Select(static p => (p.paramInfo, extraInfo: (BodyParameter)p.extraInfo))
-						.ToArray() is [var firstBody, ..] ? firstBody : null;
-
-					sb.CreateMethod(RestFetchSourceGenerator.RestFetchNamespaceName, new("1.0.0"), method.MethodInfo, sb => {
-						sb.CreateIndent(sb => {
-							sb.AppendLine($"var __requestId = {method.IdGenerator}.NextId();");
-
-							var hasMetadata = GenerateMetadata(sb, method, parameters);
-
-							var hasHeaders = GenerateHeaders(sb, method, parameters);
-
-							GenerateAPIContext(sb, apiDefinition, method, hasMetadata);
-
-							GenerateOnError(sb, method, cancellationTokenParam, () => {
-								sb.AppendLine("using var __urlBuilder = ZString.CreateStringBuilder();");
-								if (string.IsNullOrEmpty(method.BaseAddress)) {
-									sb.AppendLine("__urlBuilder.Append(Client.BaseAddress);");
-								} else {
-									sb.AppendLine($@"__urlBuilder.Append(""{method.BaseAddress}"");");
-								}
-
-
-								GenerateParams(sb, method.PathSegments?.ToArray(), parameters);
-								GenerateQueryString(sb, parameters);
-								sb.AppendLine("__context.URL = __urlBuilder.ToString();");
-								GenerateRequestBodySerializer(sb, bodyParam, cancellationTokenParam);
-								GenerateBeforeSend(sb, method, bodyParam, cancellationTokenParam);
-								GenerateSendAsync(sb, method, bodyParam, cancellationTokenParam, hasHeaders);
-								GenerateAfterResponse(sb, method, cancellationTokenParam);
-								GenerateExceptionFactory(sb, method, cancellationTokenParam);
-								GenerateResponseDeserializer(sb, method, cancellationTokenParam);
-								GenerateOnSuccess(sb, method, cancellationTokenParam);
-
-								if (!method.ReturnsVoid) {
-									if (method.ReturnsRawResponse) {
-										sb.AppendLine("return __resp;");
-									} else if (method.ReturnsStream) {
-										// TODO
-										sb.AppendLine("return __respBody;");
-									} else if (method.ReturnsIAsyncEnumerableT) {
-										// TODO
-									} else {
-										sb.AppendLine("return __respBody;");
-									}
-								}
-							});
-
-						});
-					});
-				}
-			}), apiDefinition.TypeInfo.IsInterface ? typeName : null, "IDisposable");
+			if (apiDefinition.TypeInfo.IsInterface) {
+				sb.CreateType(RestFetchSourceGenerator.RestFetchNamespaceName, new("1.0.0"),
+					apiDefinition.TypeInfo, sb => {
+						// sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
+						// 	.AppendLine($@"public new static {typeNameFullyQualifiedNameWithGlobal} Create(string baseAddress) => new(true, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(baseAddress));")
+						// 	.AppendLine("")
+						// 	.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
+						// 	.AppendLine($@"public new static {typeNameFullyQualifiedNameWithGlobal} Create(IHttpClientProxy<{apiDefinition.TResponse}, {apiDefinition.THttpClientProxy}> client) => new(true, client);")
+						// 	.AppendLine("")
+						// 	.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
+						// 	.AppendLine($@"public new static {typeNameFullyQualifiedNameWithGlobal} Create(bool sharedClient, IHttpClientProxy<{apiDefinition.TResponse}, {apiDefinition.THttpClientProxy}> client) => new(sharedClient, client);")
+						// 	.AppendLine("");
+						GenerateType(sb, apiDefinition, false, typeNameFullyQualifiedNameWithGlobal, typeName);
+					}, true);
+			} else {
+				GenerateType(sb, apiDefinition, true, typeNameFullyQualifiedNameWithGlobal, typeName);
+			}
 		});
 		return sourceBuilder.ToString();
 	}
@@ -293,7 +327,7 @@ public static class Emitter {
 		ApiDefinitionTypeInfo apiDefinition,
 		ApiDefinitionMethodInfo method,
 		bool hasMetadata) {
-		sb.AppendLine($"var __context = new APIContext<{apiDefinition.TResponse}, {apiDefinition.TProxy}>(");
+		sb.AppendLine($"var __context = new APIContext(");
 		sb.CreateIndent(sb => {
 			sb.AppendLine($"id: __requestId,");
 			sb.AppendLine($"client: Client,");
@@ -331,11 +365,11 @@ public static class Emitter {
 		bool hasHeaders
 		) {
 		if (!method.ReturnsRawResponse && !method.ReturnsStream && !method.ReturnsVoid) {
-			sb.Append($"var __resp = await Client.SendAsync(in __context, {(hasHeaders ? "__headers" : "null")}, {(bodyParam is null ? "null" : "__body")}, {(cancellationTokenParam is {} token
+			sb.Append($"var __resp = await Client.SendAsync{(bodyParam is null ? "<global::System.Net.Http.HttpContent>" : "")}(in __context, {(hasHeaders ? "__headers" : "null")}, {(bodyParam is null ? "null" : "__body")}, {(cancellationTokenParam is {} token
 				? token.paramInfo.Name
 				: "CancellationToken.None")})", true);
 		} else {
-			sb.Append($"using var __resp = await Client.SendAsync(in __context, {(hasHeaders ? "__headers" : "null")}, {(bodyParam is null ? "null" : "__body")}, {(cancellationTokenParam is {} token
+			sb.Append($"using var __resp = await Client.SendAsync{(bodyParam is null ? "<global::System.Net.Http.HttpContent>" : "")}(in __context, {(hasHeaders ? "__headers" : "null")}, {(bodyParam is null ? "null" : "__body")}, {(cancellationTokenParam is {} token
 				? token.paramInfo.Name
 				: "CancellationToken.None")})", true);
 		}
