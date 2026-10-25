@@ -103,6 +103,7 @@
 		<EmbeddedResource Include="./IdGeneratorAttribute.cs" LogicalName="RestFetch.IdGeneratorAttribute.cs" />
 		<EmbeddedResource Include="./MetadataAttribute.cs" LogicalName="RestFetch.MetadataAttribute.cs" />
 		<EmbeddedResource Include="./OnErrorAttribute.cs" LogicalName="RestFetch.OnErrorAttribute.cs" />
+		<EmbeddedResource Include="./OnSseEventErrorAttribute.cs" LogicalName="RestFetch.OnSseEventErrorAttribute.cs" />
 		<EmbeddedResource Include="./OnSuccessAttribute.cs" LogicalName="RestFetch.OnSuccessAttribute.cs" />
 		<EmbeddedResource Include="./ParamAttribute.cs" LogicalName="RestFetch.ParamAttribute.cs" />
 		<EmbeddedResource Include="./QueryAttribute.cs" LogicalName="RestFetch.QueryAttribute.cs" />

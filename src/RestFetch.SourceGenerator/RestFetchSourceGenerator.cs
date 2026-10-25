@@ -36,6 +36,7 @@ public sealed class RestFetchSourceGenerator: IIncrementalGenerator {
 		"RestFetch.IdGeneratorAttribute.cs",
 		"RestFetch.MetadataAttribute.cs",
 		"RestFetch.OnErrorAttribute.cs",
+		"RestFetch.OnSseEventErrorAttribute.cs",
 		"RestFetch.OnSuccessAttribute.cs",
 		"RestFetch.ParamAttribute.cs",
 		"RestFetch.QueryAttribute.cs",
@@ -64,9 +65,10 @@ public sealed class RestFetchSourceGenerator: IIncrementalGenerator {
 			}
 		});
 
-		if (!Debugger.IsAttached){
-			Debugger.Launch();
-		}
+		// if (!Debugger.IsAttached){
+
+		// 	Debugger.Launch();
+		// }
 
 		// 取得所有[Get]等http attribute修饰的方法所属类
 		var apiDefinitionSymbolProviders = HttpAttributeMetadataNames.Select(attrName =>
@@ -106,10 +108,10 @@ public sealed class RestFetchSourceGenerator: IIncrementalGenerator {
 			.SelectMany(static (apiDefinitionInfo, _) => apiDefinitionInfo.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArray());
 
 		context.RegisterImplementationSourceOutput(partialTypeProvider, static (ctx, apiDefinition) => {
-			ctx.AddSource($"{apiDefinition.TypeInfo.Name}.cs", SourceText.From(Emitter.GenerateSource(apiDefinition), Encoding.UTF8));
+			ctx.AddSource($"{apiDefinition.TypeInfo.FullyQualifiedName.Replace("<", null).Replace(">", null).Replace(",", null)}.cs", SourceText.From(Emitter.GenerateSource(apiDefinition), Encoding.UTF8));
 		});
 		context.RegisterSourceOutput(interfaceProvider, static (ctx, apiDefinition) => {
-			ctx.AddSource($"{apiDefinition.TypeInfo.Name}.cs", SourceText.From(Emitter.GenerateSource(apiDefinition), Encoding.UTF8));
+			ctx.AddSource($"{apiDefinition.TypeInfo.FullyQualifiedName.Replace("<", null).Replace(">", null).Replace(",", null)}.cs", SourceText.From(Emitter.GenerateSource(apiDefinition), Encoding.UTF8));
 		});
 
 		context.RegisterSourceOutput(diagnosticProvider, static (ctx, data) =>

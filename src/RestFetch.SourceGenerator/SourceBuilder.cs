@@ -8,12 +8,12 @@ namespace RestFetch.SourceGenerator;
 
 public sealed class SourceBuilder: IDisposable {
 	public Utf16ValueStringBuilder StringBuilder = ZString.CreateStringBuilder();
-	private int _IndentLevel = 0;
+	private int _indentLevel = 0;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public SourceBuilder Append<T>(T arg, bool lineStart = false) {
-		if (_IndentLevel > 0 && lineStart) {
-			StringBuilder.Append('\t', _IndentLevel);
+		if (_indentLevel > 0 && lineStart) {
+			StringBuilder.Append('\t', _indentLevel);
 		}
 		StringBuilder.Append(arg);
 		return this;
@@ -21,8 +21,8 @@ public sealed class SourceBuilder: IDisposable {
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public SourceBuilder AppendLine<T>(T arg) {
-		if (_IndentLevel > 0) {
-			StringBuilder.Append('\t', _IndentLevel);
+		if (_indentLevel > 0) {
+			StringBuilder.Append('\t', _indentLevel);
 		}
 		StringBuilder.AppendLine(arg);
 		return this;
@@ -82,9 +82,9 @@ public sealed class SourceBuilder: IDisposable {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public SourceBuilder CreateIndent(Action<SourceBuilder>? fillContent) {
 		StringBuilder.AppendLine();
-		++_IndentLevel;
+		++_indentLevel;
 		fillContent?.Invoke(this);
-		--_IndentLevel;
+		--_indentLevel;
 		StringBuilder.AppendLine();
 		return this;
 	}
@@ -102,6 +102,7 @@ public sealed class SourceBuilder: IDisposable {
 				Accessibility.ProtectedOrInternal => "protected internal ",
 				_ => ""
 			};
+			sb.AppendLine("#pragma warning disable CS0693");
 
 			sb.Append(accessibility, true);
 
@@ -172,6 +173,7 @@ public sealed class SourceBuilder: IDisposable {
 			}
 
 			sb.Append(" {\n");
+			sb.AppendLine("#pragma warning restore CS0693\n");
 		}
 
 
@@ -336,6 +338,13 @@ public sealed class SourceBuilder: IDisposable {
 				return innerSb.ToString();
 			}).ToArray());
 			Append(") ");
+
+			if (methodInfo.IsGenericMethod) {
+				Append(methodInfo.WhereClauses);
+			}
+			// if (!string.IsNullOrEmpty(type.WhereClauses)) {
+			// 	sb.Append('\n').Append(type.WhereClauses);
+			// }
 
 			Append('{');
 			fillContent?.Invoke(this);

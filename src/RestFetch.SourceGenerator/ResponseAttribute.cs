@@ -7,9 +7,6 @@ namespace RestFetch;
 [global::System.CodeDom.Compiler.GeneratedCodeAttribute(nameof(RestFetch), "1.0")]
 [global::Microsoft.CodeAnalysis.EmbeddedAttribute]
 [AttributeUsage(
-	AttributeTargets.Class |
-	AttributeTargets.Struct |
-	AttributeTargets.Interface |
 	AttributeTargets.Method,
 	Inherited = true,
 	AllowMultiple = false
@@ -26,6 +23,8 @@ internal class ResponseAttribute<TDeserializer>: Attribute {
 
 	// 执行hook的时候ConfigureAwait(false)的参数
 	public bool ConfigureAwait = false;
+	// 允许返回类型为非可空,跳过运行时可空类型检查
+	public bool SkipNullableCheck = false;
 
 	// TODO 需要源生成器检查类型是JsonSerializeContext
 	public Type? JsonContext;

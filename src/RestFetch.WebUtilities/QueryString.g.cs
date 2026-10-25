@@ -1492,9 +1492,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -1550,9 +1550,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -1608,9 +1608,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -1666,9 +1666,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -1724,9 +1724,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -1782,9 +1782,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -1840,9 +1840,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -1898,9 +1898,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -1956,9 +1956,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -2014,9 +2014,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);
@@ -2072,9 +2072,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, value));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(value);

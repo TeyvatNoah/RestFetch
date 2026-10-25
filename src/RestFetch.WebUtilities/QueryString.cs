@@ -211,12 +211,14 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
-		if (iterator.MoveNext() && !string.IsNullOrEmpty(value)) {
+		if (iterator.MoveNext()) {
+			var (key, value) = iterator.Current;
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, TEncoder.EncodeURIComponent(value)));
-			sb.Append(TEncoder.EncodeURIComponent(key));
-			sb.Append(Eq);
-			sb.Append(TEncoder.EncodeURIComponent(value));
+			if (!string.IsNullOrEmpty(value)) {
+				sb.Append(TEncoder.EncodeURIComponent(key));
+				sb.Append(Eq);
+				sb.Append(TEncoder.EncodeURIComponent(value));
+			}
 		}
 
 		while (iterator.MoveNext()) {
@@ -245,14 +247,16 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var current = iterator.Current;
 		var encodedKey = TEncoder.EncodeURIComponent(aliasKey);
 
-		if (iterator.MoveNext() && !string.IsNullOrEmpty(current)) {
+		if (iterator.MoveNext()) {
+			var current = iterator.Current;
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(aliasKey), Eq, TEncoder.EncodeURIComponent(current)));
-			sb.Append(encodedKey);
-			sb.Append(Eq);
-			sb.Append(TEncoder.EncodeURIComponent(current));
+			if (!string.IsNullOrEmpty(current)) {
+				sb.Append(encodedKey);
+				sb.Append(Eq);
+				sb.Append(TEncoder.EncodeURIComponent(current));
+			}
 		}
 
 		while (iterator.MoveNext()) {
@@ -422,9 +426,9 @@ public partial class QueryString<TEncoder>:
 		using var sb = ZString.CreateStringBuilder(true);
 		using var iterator = collection.GetEnumerator();
 
-		var (key, value) = iterator.Current;
 		if (iterator.MoveNext()) {
 			// sb.Append(ZString.Concat(TEncoder.EncodeURIComponent(key), Eq, Serialize(value)));
+			var (key, value) = iterator.Current;
 			sb.Append(TEncoder.EncodeURIComponent(key));
 			sb.Append(Eq);
 			sb.Append(Serialize(value));

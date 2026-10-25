@@ -5,15 +5,14 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace RestFetch;
 
-// public interface IHttpClientProxy {
-// 	TResponse Request<TResponse>(int param);
-// }
-public sealed class HttpClientProxy(bool sharedHandler, HttpMessageHandler handler): IHttpClientProxy {
-	private readonly bool _OwnedHandler = !sharedHandler;
+public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClientProxy<HttpResponseMessage, HttpClientProxy> {
+	private readonly bool _ownedHandler = !options.SharedHandler;
 
-	private readonly HttpClient _Client = new(handler);
+	private readonly HttpClient _client = new(options.Handler);
 
-	public required string BaseAddress { get => _Client.BaseAddress?.ToString() ?? ""; set => _Client.BaseAddress = new(value, new UriCreationOptions() {
+	public object? Options { get; init; } = options;
+
+	public required string BaseAddress { get => _client.BaseAddress?.ToString() ?? ""; set => _client.BaseAddress = new(value, new UriCreationOptions() {
 		DangerousDisablePathAndQueryCanonicalization = true
 	}); }
 
@@ -30,23 +29,31 @@ public sealed class HttpClientProxy(bool sharedHandler, HttpMessageHandler handl
 		}
 	};
 
-	public HttpClientProxy(): this(false, new SocketsHttpHandler() {
-		AllowAutoRedirect = true,
-		AutomaticDecompression = DecompressionMethods.All,
-		PooledConnectionLifetime = TimeSpan.FromMinutes(2),
-		MaxConnectionsPerServer = 100,
-		// 注意会共享CookieContainer
-		UseCookies = true,
-		SslOptions = new() {
-			EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-			CertificateRevocationCheckMode = X509RevocationMode.Online
-		}
-	}) {}
+	public HttpClientProxy(): this(new HttpClientProxyOptions(
+		Handler: new SocketsHttpHandler() {
+			// Proxy = new WebProxy("http://127.0.0.1:2333", false),
+			AllowAutoRedirect = true,
+			AutomaticDecompression = DecompressionMethods.All,
+			PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+			MaxConnectionsPerServer = 100,
+			// 注意会共享CookieContainer
+			UseCookies = true,
+			SslOptions = new() {
+				EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+				CertificateRevocationCheckMode = X509RevocationMode.Online
+			}},
+			SharedHandler: false,
+			JsonSerializerOptions: null)) {}
 
-	public HttpClientProxy(HttpMessageHandler handler): this(true, handler) => _Client = new(handler);
+	public HttpClientProxy(HttpMessageHandler handler): this(new HttpClientProxyOptions(
+		Handler: handler,
+		SharedHandler: false,
+		JsonSerializerOptions: null
+	)) => _client = new(handler);
 
-	public Task<HttpResponseMessage> SendAsync<TRequestBodyContent>(ref readonly APIContext context, Dictionary<string, string>? headers, TRequestBodyContent? body, CancellationToken token) {
-		using var msg = new HttpRequestMessage(context.HttpMethod, context.URL);
+	public Task<HttpResponseMessage> SendAsync<TRequestBodyContent>(ref readonly ApiContext context, Dictionary<string, string>? headers, TRequestBodyContent? body, CancellationToken token) {
+		// 不using,当HttpResponseMessage被Dispose的时候它会被释放
+		var msg = new HttpRequestMessage(context.HttpMethod, context.Url);
 		if (headers is not null) {
 			foreach (var (key, value) in headers) {
 				msg.Headers.TryAddWithoutValidation(key, value);
@@ -57,7 +64,7 @@ public sealed class HttpClientProxy(bool sharedHandler, HttpMessageHandler handl
 		} else {
 			// TODO
 		}
-		return _Client.SendAsync(msg, token);
+		return _client.SendAsync(msg, context.ReturnsAsyncEnumerable ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead, token);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -68,50 +75,9 @@ public sealed class HttpClientProxy(bool sharedHandler, HttpMessageHandler handl
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Dispose() {
-		if (_OwnedHandler) {
-			_Client.Dispose();
+		if (_ownedHandler) {
+			_client.Dispose();
 		}
 	}
 }
 
-public interface IRestFetchOptions {
-	
-}
-
-public sealed class RestFetchOptions {
-	
-}
-
-
-public static class RestFetchService<THttpClientProxy> where THttpClientProxy: IHttpClientProxy {
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchAPI<TAPI>
-		=> TAPI.Create(baseAddress);
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) where TAPI: IRestFetchAPI<TAPI>
-		=> TAPI.Create(httpClientProxy);
-}
-
-public static class RestFetchService<TResponse, THttpClientProxy>
-	where TResponse: IDisposable
-	where THttpClientProxy: IHttpClientProxy<TResponse, THttpClientProxy> {
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchAPI<TAPI, TResponse, THttpClientProxy>
-		=> TAPI.Create(baseAddress);
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) where TAPI: IRestFetchAPI<TAPI, TResponse, THttpClientProxy>
-		=> TAPI.Create(httpClientProxy);
-}
-
-
-public static class RestFetchService {
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchAPI<TAPI>
-		=> TAPI.Create(baseAddress);
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(HttpClientProxy httpClientProxy) where TAPI: IRestFetchAPI<TAPI>
-		=> TAPI.Create(httpClientProxy);
-}

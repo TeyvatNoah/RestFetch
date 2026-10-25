@@ -16,7 +16,11 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? MetadataAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.MetadataAttribute");
 	public readonly INamedTypeSymbol? ResponseAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseAttribute`1");
 	public readonly INamedTypeSymbol? ResponseBodyDeserializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseBodyDeserializer")!;
-	public readonly INamedTypeSymbol? ResponseBodyGenericDeserializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.,IResponseBodyDeserializer`1");
+	public readonly INamedTypeSymbol? ResponseBodyGenericDeserializer1 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseBodyDeserializer`1");
+	public readonly INamedTypeSymbol? ResponseBodyGenericDeserializer2 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseBodyDeserializer`2");
+	public readonly INamedTypeSymbol? ResponseAsyncEnumerableDeserializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseAsyncEnumerableDeserializer")!;
+	public readonly INamedTypeSymbol? ResponseAsyncEnumerableGenericDeserializer1 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseAsyncEnumerableDeserializer`1");
+	public readonly INamedTypeSymbol? ResponseAsyncEnumerableGenericDeserializer2 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseAsyncEnumerableDeserializer`2");
 	public readonly INamedTypeSymbol? HttpMethodAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpMethodAttribute");
 	public readonly INamedTypeSymbol? BaseAddress = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.BaseAddressAttribute");
 	public readonly INamedTypeSymbol? HeaderAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.HeaderAttribute");
@@ -31,10 +35,11 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? ExceptionFactoryInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IExceptionFactory");
 	public readonly INamedTypeSymbol? ExceptionFactoryGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IExceptionFactory`1");
 	public readonly INamedTypeSymbol? HttpClientProxyAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxyAttribute`1");
-	public readonly INamedTypeSymbol? HttpClientProxyInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy");
 	public readonly INamedTypeSymbol? HttpClientProxyGenericInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy`2");
 	public readonly INamedTypeSymbol? OnErrorAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.OnErrorAttribute`1");
 	public readonly INamedTypeSymbol? OnErrorInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IOnError");
+	public readonly INamedTypeSymbol? OnSseEventErrorAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.OnSseEventErrorAttribute`1");
+	public readonly INamedTypeSymbol? OnSseEventErrorInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IOnSseEventError");
 	public readonly INamedTypeSymbol? OnSuccessAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.OnSuccessAttribute`1");
 	public readonly INamedTypeSymbol? OnSuccessInterface = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IOnSuccess");
 	public readonly INamedTypeSymbol? CancellationToken = compilation.GetTypeByMetadataName("System.Threading.CancellationToken");
@@ -60,8 +65,28 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? JsonSerializerContext = compilation.GetTypeByMetadataName("System.Text.Json.Serialization.JsonSerializerContext");
 	public readonly INamedTypeSymbol? Stream = compilation.GetTypeByMetadataName("System.IO.Stream");
 	public readonly INamedTypeSymbol? IObservable = compilation.GetTypeByMetadataName("System.IObservable`1");
+	public readonly INamedTypeSymbol? HttpContent = compilation.GetTypeByMetadataName("System.Net.Http.HttpContent");
+	public readonly IArrayTypeSymbol? ByteArray = compilation.CreateArrayTypeSymbol(compilation.GetTypeByMetadataName("System.Byte")!);
+	public readonly INamedTypeSymbol? ByteMemory = compilation.GetTypeByMetadataName("System.ReadOnlyMemory`1")?.Construct(compilation.GetSpecialType(SpecialType.System_Byte));
+	public readonly INamedTypeSymbol? FileInfo = compilation.GetTypeByMetadataName("System.IO.FileInfo");
+	public readonly INamedTypeSymbol? RestFetchFileInfo = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.RestFetchFileInfo");
+	public readonly IArrayTypeSymbol? FileInfoArray = compilation.CreateArrayTypeSymbol(compilation.GetTypeByMetadataName("System.IO.FileInfo")!);
+	public readonly IArrayTypeSymbol? RestFetchFileInfoArray = compilation.CreateArrayTypeSymbol(compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.RestFetchFileInfo")!);
+	public readonly INamedTypeSymbol? IEnumerableFileInfo = compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1")?.Construct(compilation.GetTypeByMetadataName("System.IO.FileInfo")!);
+	public readonly INamedTypeSymbol? IEnumerableRestFetchFileInfo = compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1")?
+		.Construct(compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.RestFetchFileInfo")!);
+	public readonly INamedTypeSymbol? IEnumerableKeyValuePairString = compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1")?
+		.Construct(compilation.GetTypeByMetadataName("System.Collections.Generic.KeyValuePair`2")!
+		.Construct(compilation.GetSpecialType(SpecialType.System_String), compilation.GetSpecialType(SpecialType.System_String)));
+	public readonly INamedTypeSymbol? JsonNode = compilation.GetTypeByMetadataName("System.Text.Json.Nodes.JsonNode");
+	public readonly INamedTypeSymbol? JsonDocument = compilation.GetTypeByMetadataName("System.Text.Json.JsonDocument");
+	public readonly INamedTypeSymbol? SseEvent = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.WebUtilities.SseEvent");
+	public readonly INamedTypeSymbol? SseEventT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.WebUtilities.SseEvent`1");
+	public readonly INamedTypeSymbol? SseEventResultT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.SseEventResult`1");
+	public readonly INamedTypeSymbol? SseItemT = compilation.GetTypeByMetadataName("System.Net.ServerSentEvents.SseItem`1");
+	public readonly INamedTypeSymbol? ApiResponseT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ApiResponse`1");
 
-		public override bool Equals(object? obj) => obj is not null && obj is KnownTypes types && Equals(types);
+	public override bool Equals(object? obj) => obj is not null && obj is KnownTypes types && Equals(types);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public bool Equals(KnownTypes obj) => this == obj;
@@ -76,7 +101,8 @@ public sealed class KnownTypes(Compilation compilation)
 		MetadataAttribute,
 		ResponseAttribute,
 		ResponseBodyDeserializer,
-		ResponseBodyGenericDeserializer,
+		ResponseBodyGenericDeserializer1,
+		ResponseBodyGenericDeserializer2,
 		HttpMethodAttribute,
 		BaseAddress,
 		HeaderAttribute,
@@ -91,10 +117,11 @@ public sealed class KnownTypes(Compilation compilation)
 		ExceptionFactoryInterface,
 		ExceptionFactoryGenericInterface,
 		HttpClientProxyAttribute,
-		HttpClientProxyInterface,
 		HttpClientProxyGenericInterface,
 		OnErrorAttribute,
 		OnErrorInterface,
+		OnSseEventErrorAttribute,
+		OnSseEventErrorInterface,
 		OnSuccessAttribute,
 		OnSuccessInterface,
 		CancellationToken,
@@ -119,7 +146,22 @@ public sealed class KnownTypes(Compilation compilation)
 		QueryAttributeT,
 		JsonSerializerContext,
 		Stream,
-		IObservable
+		IObservable,
+		HttpContent,
+		ByteArray,
+		ByteMemory,
+		FileInfo,
+		RestFetchFileInfo,
+		IEnumerableFileInfo,
+		IEnumerableRestFetchFileInfo,
+		IEnumerableKeyValuePairString,
+		JsonNode,
+		JsonDocument,
+		SseEvent,
+		SseEventT,
+		SseEventResultT,
+		SseItemT,
+		ApiResponseT
 	).GetHashCode();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -133,7 +175,8 @@ public sealed class KnownTypes(Compilation compilation)
 		&& Comparer.Equals(left.MetadataAttribute, right.MetadataAttribute)
 		&& Comparer.Equals(left.ResponseAttribute, right.ResponseAttribute)
 		&& Comparer.Equals(left.ResponseBodyDeserializer, right.ResponseBodyDeserializer)
-		&& Comparer.Equals(left.ResponseBodyGenericDeserializer, right.ResponseBodyGenericDeserializer)
+		&& Comparer.Equals(left.ResponseBodyGenericDeserializer1, right.ResponseBodyGenericDeserializer1)
+		&& Comparer.Equals(left.ResponseBodyGenericDeserializer2, right.ResponseBodyGenericDeserializer2)
 		&& Comparer.Equals(left.HttpMethodAttribute, right.HttpMethodAttribute)
 		&& Comparer.Equals(left.BaseAddress, right.BaseAddress)
 		&& Comparer.Equals(left.HeaderAttribute, right.HeaderAttribute)
@@ -148,10 +191,11 @@ public sealed class KnownTypes(Compilation compilation)
 		&& Comparer.Equals(left.ExceptionFactoryInterface, right.ExceptionFactoryInterface)
 		&& Comparer.Equals(left.ExceptionFactoryGenericInterface, right.ExceptionFactoryGenericInterface)
 		&& Comparer.Equals(left.HttpClientProxyAttribute, right.HttpClientProxyAttribute)
-		&& Comparer.Equals(left.HttpClientProxyInterface, right.HttpClientProxyInterface)
 		&& Comparer.Equals(left.HttpClientProxyGenericInterface, right.HttpClientProxyGenericInterface)
 		&& Comparer.Equals(left.OnErrorAttribute, right.OnErrorAttribute)
 		&& Comparer.Equals(left.OnErrorInterface, right.OnErrorInterface)
+		&& Comparer.Equals(left.OnSseEventErrorAttribute, right.OnSseEventErrorAttribute)
+		&& Comparer.Equals(left.OnSseEventErrorInterface, right.OnSseEventErrorInterface)
 		&& Comparer.Equals(left.OnSuccessAttribute, right.OnSuccessAttribute)
 		&& Comparer.Equals(left.OnSuccessInterface, right.OnSuccessInterface)
 		&& Comparer.Equals(left.CancellationToken, right.CancellationToken)
@@ -176,8 +220,29 @@ public sealed class KnownTypes(Compilation compilation)
 		&& Comparer.Equals(left.QueryAttributeT, right.QueryAttributeT)
 		&& Comparer.Equals(left.JsonSerializerContext, right.JsonSerializerContext)
 		&& Comparer.Equals(left.Stream, right.Stream)
-		&& Comparer.Equals(left.IObservable, right.IObservable) ;
+		&& Comparer.Equals(left.IObservable, right.IObservable)
+		&& Comparer.Equals(left.HttpContent, right.HttpContent)
+		&& Comparer.Equals(left.ByteArray, right.ByteArray)
+		&& Comparer.Equals(left.ByteMemory, right.ByteMemory)
+		&& Comparer.Equals(left.FileInfo, right.FileInfo)
+		&& Comparer.Equals(left.RestFetchFileInfo, right.RestFetchFileInfo)
+		&& Comparer.Equals(left.IEnumerableFileInfo, right.IEnumerableFileInfo)
+		&& Comparer.Equals(left.IEnumerableRestFetchFileInfo, right.IEnumerableRestFetchFileInfo)
+		&& Comparer.Equals(left.IEnumerableKeyValuePairString, right.IEnumerableKeyValuePairString)
+		&& Comparer.Equals(left.JsonNode, right.JsonNode)
+		&& Comparer.Equals(left.JsonDocument, right.JsonDocument)
+		&& Comparer.Equals(left.SseEvent, right.SseEvent)
+		&& Comparer.Equals(left.SseEventT, right.SseEventT)
+		&& Comparer.Equals(left.SseEventResultT, right.SseEventResultT)
+		&& Comparer.Equals(left.SseItemT, right.SseItemT)
+		&& Comparer.Equals(left.ApiResponseT, right.ApiResponseT);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool operator !=(KnownTypes left, KnownTypes right) => !(left == right);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static INamedTypeSymbol? CreateIEnumerableT(KnownTypes knownTypes, ITypeSymbol tSymbol) => knownTypes.IEnumerableT?.Construct(tSymbol);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static INamedTypeSymbol? CreateKeyValuePair(KnownTypes knownTypes, ITypeSymbol tSymbol0, ITypeSymbol tSymbol1) => knownTypes.KeyValuePair?.Construct(tSymbol0, tSymbol1);
 }

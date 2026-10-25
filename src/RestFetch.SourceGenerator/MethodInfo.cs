@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 
 using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
@@ -45,6 +46,8 @@ public sealed record MethodInfo(
 	TypeInfo ReturnType,
 	// 返回类型的完全限定名字符串,封闭类型
 	string ReturnTypeFullyQualifiedName,
+	// where子句
+	string? WhereClauses,
 	// 泛型参数可空性,无法使用NullableAnnotation,需要强转byte
 	EquatableArray<byte> TypeArgumentNullableAnnotations,
 	// 泛型实参
@@ -81,6 +84,7 @@ public sealed record MethodInfo(
 			ReturnType: TypeInfo.CreateFromSymbolWithoutMethods(symbol.ReturnType, knownTypes),
 			ReturnNullableAnnotation: symbol.ReturnNullableAnnotation,
 			ReturnTypeFullyQualifiedName: symbol.ReturnType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+			WhereClauses: GetWhereClauses(symbol),
 			TypeArgumentNullableAnnotations: symbol.TypeArgumentNullableAnnotations.Select(static e => (byte)e).ToImmutableArray(),
 			TypeArguments: symbol.TypeArguments.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArray(),
 			TypeParameters: symbol.TypeParameters.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArray(),
@@ -88,5 +92,15 @@ public sealed record MethodInfo(
 			// TODO
 			Diagnostics: null
 		);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string? GetWhereClauses(IMethodSymbol methodSymbol) {
+		if (!methodSymbol.IsGenericMethod) {
+			return null;
+		}
+		var nameAndWhereClauses = methodSymbol.ToDisplayString(TypeInfo.FullyQualifiedWithWhereClausesFormat);
+		var wherePatternStart = nameAndWhereClauses.IndexOf("> where", StringComparison.Ordinal);
+		return wherePatternStart == -1 ? null : nameAndWhereClauses[(wherePatternStart + 1)..];
 	}
 }

@@ -179,7 +179,28 @@ public record ApiParameterExtraInfo(
 					}
 				}
 			}
-			// TODO 检查参数类型是否是默认序列化器支持的
+			var defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Json";
+			if (parameterSymbol.Type.InheritsFrom(knownTypes.SystemString)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.SystemString";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.Stream)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Stream";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.ByteArray)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.ByteArray";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.ByteMemory)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.ByteMemory";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.HttpContent)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Raw";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.FileInfo)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.MultipartFormData";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.RestFetchFileInfo)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.MultipartFormData";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.IEnumerableFileInfo) || parameterSymbol.Type.InheritsFrom(knownTypes.FileInfoArray)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.MultipartFormData";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.IEnumerableRestFetchFileInfo) || parameterSymbol.Type.InheritsFrom(knownTypes.RestFetchFileInfoArray)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.MultipartFormData";
+			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.IEnumerableKeyValuePairString)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Form";
+			}
 			return new BodyParameter(
 				Name: parameterSymbol.Name,
 				IsValid: true,
@@ -187,9 +208,9 @@ public record ApiParameterExtraInfo(
 				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 				Serializer: new(
 					ConfigureAwait: configureAwait,
-					FullyQualifiedName: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Json",
-					FullyQualifiedNameWithGlobal: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Json",
-				TypeArguments: null,
+					FullyQualifiedName: defaultSerializer,
+					FullyQualifiedNameWithGlobal: defaultSerializer,
+					TypeArguments: null,
 					Diagnostics: null
 				),
 				Diagnostics: null

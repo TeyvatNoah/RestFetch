@@ -18,6 +18,7 @@ public sealed record ApiDefinitionTypeInfo(
 	HookInfo? BeforeSendHook,
 	HookInfo? AfterResponseHook,
 	HookInfo? OnError,
+	HookInfo? OnSseEventError,
 	HookInfo? OnSuccess,
 	HookInfo ExceptionFactory,
 	HookInfo HttpClientProxy,
@@ -51,7 +52,7 @@ public sealed record ApiDefinitionTypeInfo(
 
 	private static readonly DiagnosticDescriptor HookRule3 = new("RestFetch0023",
 		"错误的HttpClientProxy类型",
-		"HttpClientProxy<THook>中THook必须实现IHttpClientProxy或IHttpClientProxy<TResponse, THttpClientProxy>",
+		"HttpClientProxy<THttpClientProxy>中THttpClientProxy必须实现IHttpClientProxy<TResponse, THttpClientProxy>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule4 = new("RestFetch0024",
@@ -62,6 +63,11 @@ public sealed record ApiDefinitionTypeInfo(
 	private static readonly DiagnosticDescriptor HookRule5 = new("RestFetch0025",
 		"错误的OnSuccess类型",
 		"OnSuccess<THook>中THook必须实现IOnSuccess",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
+
+	private static readonly DiagnosticDescriptor HookRule7 = new("RestFetch0027",
+		"错误的OnSseEventError类型",
+		"OnSseEventError<THook>中THook必须实现IOnSseEventError",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	public static ApiDefinitionTypeInfo CreateFromSymbol(ITypeSymbol symbol, KnownTypes knownTypes) {
@@ -101,6 +107,8 @@ public sealed record ApiDefinitionTypeInfo(
 		);
 		var onError = GetOnError(attrList, knownTypes);
 		var onSuccess = GetOnSuccess(attrList, knownTypes);
+		var onSseEventError = GetOnSseEventError(attrList, knownTypes);
+
 		var tempApiDefinition = new ApiDefinitionTypeInfo(
 			TResponse: httpClientProxy.TypeArguments?[0] ?? TResponseName,
 			THttpClientProxy: httpClientProxy.TypeArguments?[1] ?? THttpClientProxyName,
@@ -115,6 +123,7 @@ public sealed record ApiDefinitionTypeInfo(
 			ExceptionFactory: exceptionFactory,
 			HttpClientProxy: httpClientProxy,
 			OnError: onError,
+			OnSseEventError: onSseEventError,
 			OnSuccess: onSuccess,
 			Methods: [],
 			Diagnostics: ImmutableArrayExtension.CombineSafe(
@@ -124,6 +133,7 @@ public sealed record ApiDefinitionTypeInfo(
 				exceptionFactory.Diagnostics,
 				httpClientProxy.Diagnostics,
 				onError?.Diagnostics,
+				onSseEventError?.Diagnostics,
 				onSuccess?.Diagnostics
 			)
 		);
@@ -270,12 +280,11 @@ public sealed record ApiDefinitionTypeInfo(
 		if (httpClientProxyAttr is null || httpClientProxyAttr.AttributeClass is null) {
 			return null;
 		}
-		var httpClientProxyInterface = knownTypes.HttpClientProxyInterface;
 		var httpClientProxyGenericInterface = knownTypes.HttpClientProxyGenericInterface;
 		var targetType = httpClientProxyAttr.AttributeClass.TypeArguments[0];
 		var configureAwait = !httpClientProxyAttr.NamedArguments.IsEmpty && (bool)httpClientProxyAttr.NamedArguments[0].Value.Value!;
 
-		if (targetType.ImplementsInterface(httpClientProxyInterface) || targetType.ImplementsInterface(httpClientProxyGenericInterface)) {
+		if (targetType.ImplementsInterface(httpClientProxyGenericInterface)) {
 			var httpClientProxyGenericInterfaceImpl = targetType.GetInterface(httpClientProxyGenericInterface);
 			var typeArguments = httpClientProxyGenericInterfaceImpl!.TypeArguments
 				.Select(static t => t.ToDisplayString(TypeInfo.FullyQualifiedFormat))
@@ -324,6 +333,32 @@ public sealed record ApiDefinitionTypeInfo(
 				ConfigureAwait: configureAwait,
 				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule4, new(onErrorAttr.GetTypeArgumentLocation()), null)]
+			);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static HookInfo? GetOnSseEventError(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var onSseEventErrorAttr = attrs.GetAttributesBySymbol(knownTypes.OnSseEventErrorAttribute).FirstOrDefault();
+		if (onSseEventErrorAttr is null || onSseEventErrorAttr.AttributeClass is null) {
+			return null;
+		}
+		var onSseEventErrorInterface = knownTypes.OnSseEventErrorInterface;
+		var targetType = onSseEventErrorAttr.AttributeClass.TypeArguments[0];
+		var configureAwait = !onSseEventErrorAttr.NamedArguments.IsEmpty && (bool)onSseEventErrorAttr.NamedArguments[0].Value.Value!;
+		return targetType.ImplementsInterface(onSseEventErrorInterface)
+			? new(
+				FullyQualifiedName: targetType.ToDisplayString(),
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
+				Diagnostics: null
+			)
+			: new(
+				FullyQualifiedName: targetType.ToDisplayString(),
+				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				ConfigureAwait: configureAwait,
+				TypeArguments: null,
+				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule7, new(onSseEventErrorAttr.GetTypeArgumentLocation()), null)]
 			);
 	}
 

@@ -22,6 +22,8 @@
     <!-- T4模板 -->
     <!-- <TransformOnBuild>True</TransformOnBuild>
     <TransformOutOfDateOnly>True</TransformOutOfDateOnly> -->
+		<MainClassFromEntry Condition="'$(Entry)' != ''">$([System.IO.Path]::GetFileNameWithoutExtension('$(Entry)'))</MainClassFromEntry>
+		<StartupObject Condition="'$(MainClassFromEntry)' != ''">RestFetch.Examples.$(MainClassFromEntry)</StartupObject>
 	</PropertyGroup>
 
 	<!-- Debug配置 -->

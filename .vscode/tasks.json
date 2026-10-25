@@ -70,6 +70,7 @@
 				"${workspaceFolder}/src/RestFetch.Examples/RestFetch.Examples.csproj",
 				"-c",
 				"Debug",
+				"-p:Entry=${file}",
 			],
 			"problemMatcher": "$msCompile"
 		},

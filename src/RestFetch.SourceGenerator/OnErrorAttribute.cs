@@ -20,7 +20,8 @@ namespace RestFetch;
 // 但是此类型作为Attr,使用时其实可以知道目标类型U
 // 增加一个泛型参数又显得有点多余,故不对T做泛型约束
 // 交给源生成器做约束
-internal class OnErrorAttribute<THook>: Attribute {
+internal class OnErrorAttribute<THook>: Attribute
+	where THook: IOnError {
 	// TODO 如果有默认泛型参数就考虑用泛型
 	public readonly Type Hook = typeof(THook);
 

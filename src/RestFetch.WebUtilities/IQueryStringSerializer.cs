@@ -29,6 +29,7 @@ internal interface IAliasQueryStringSerializer<in T> where T: allows ref struct 
 
 // 不用作内部使用,用作用户实现,用作类方法
 public interface IQueryStringSerializer {
+	// 如果T是字面量null则无法自动推导,不过源生成器会保证不传字面量null
 	static abstract string Serialize<T>(T? value) where T: allows ref struct;
 	// static abstract ReadOnlySpan<byte> SerializeUTF8String(T? value);
 }

@@ -9,5 +9,8 @@ public readonly record struct HookInfo(
 	bool ConfigureAwait,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
 	EquatableArray<string>? TypeArguments,
-	string? JsonContext = null
+	string? JsonContext = null,
+	bool CallWithGenericArgs = false,
+	bool SkipNullableCheck = false,
+	bool IsSseDeserializer = false
 );

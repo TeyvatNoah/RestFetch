@@ -56,7 +56,7 @@ public static class ITypeSymbolExtension {
 		return null;
 	}
 
-	public static bool InheritsFrom(this ITypeSymbol? symbol, INamedTypeSymbol? baseTypeSymbol) {
+	public static bool InheritsFrom(this ITypeSymbol? symbol, ITypeSymbol? baseTypeSymbol) {
 		if (symbol is null || baseTypeSymbol is null) return false;
 
 		if (SymbolEqualityComparer.Default.Equals(symbol, baseTypeSymbol)) {
@@ -162,7 +162,7 @@ public static class ITypeSymbolExtension {
 			return ReturnTypeWrapperKind.TaskT;
 		} else if (comparer.Equals(realReturnType, knownTypes.ValueTask)) {
 			return ReturnTypeWrapperKind.ValueTask;
-		} else if (comparer.Equals(realReturnType, knownTypes.ValueTask)) {
+		} else if (comparer.Equals(realReturnType, knownTypes.ValueTaskT)) {
 			return ReturnTypeWrapperKind.ValueTaskT;
 		} else if (comparer.Equals(realReturnType, knownTypes.IAsyncEnumerableT)) {
 			return ReturnTypeWrapperKind.IAsyncEnumerableT;
@@ -190,17 +190,80 @@ public static class ITypeSymbolExtension {
 			IsGenericType: true,
 			TypeArguments: [var respType, ..]
 		}) {
+			var maybeSseOrApiResponse = respType.OriginalDefinition;
+			var comparer = SymbolEqualityComparer.Default;
+			var isSseEventT = comparer.Equals(maybeSseOrApiResponse, knownTypes.SseEventT);
+			var isSseItemT = comparer.Equals(maybeSseOrApiResponse, knownTypes.SseItemT);
+			var isApiResponseT = comparer.Equals(maybeSseOrApiResponse, knownTypes.ApiResponseT);
 			if (respType.SpecialType == SpecialType.System_String) {
 				return ReturnTypeKind.SystemString;
-			} else if (respType.InheritsFrom(knownTypes.Stream)) {
+			} else if (comparer.Equals(respType, knownTypes.Stream)) {
 				return ReturnTypeKind.Stream;
+			} else if (comparer.Equals(respType, knownTypes.JsonNode)) {
+				return ReturnTypeKind.JsonNode;
+			} else if (comparer.Equals(respType, knownTypes.JsonDocument)) {
+				return ReturnTypeKind.JsonDocument;
+			} else if (comparer.Equals(respType, knownTypes.SseEvent)) {
+				return ReturnTypeKind.SseEvent;
+			} else if (isSseEventT) {
+				if (respType is INamedTypeSymbol {
+					IsGenericType: true,
+					TypeArguments: [var sseDataType0, ..]
+				}) {
+					if (sseDataType0.SpecialType == SpecialType.System_String) {
+						return ReturnTypeKind.SseEventString;
+					} else if (comparer.Equals(sseDataType0, knownTypes.JsonNode)) {
+						return ReturnTypeKind.SseEventJsonNode;
+					} else if (comparer.Equals(sseDataType0, knownTypes.JsonDocument)) {
+						return ReturnTypeKind.SseEventJsonDocument;
+					} else {
+						return ReturnTypeKind.SseEventT;
+					}
+				} else {
+					throw new NotSupportedException("Unreachable");
+				}
+			} else if (isSseItemT) {
+				if (respType is INamedTypeSymbol {
+					IsGenericType: true,
+					TypeArguments: [var sseDataType1, ..]
+				}) {
+					if (sseDataType1.SpecialType == SpecialType.System_String) {
+						return ReturnTypeKind.SseItemString;
+					} else if (comparer.Equals(sseDataType1, knownTypes.JsonNode)) {
+						return ReturnTypeKind.SseItemJsonNode;
+					} else if (comparer.Equals(sseDataType1, knownTypes.JsonDocument)) {
+						return ReturnTypeKind.SseItemJsonDocument;
+					} else {
+						return ReturnTypeKind.SseItemT;
+					}
+				} else {
+					throw new NotSupportedException("Unreachable");
+				}
+			} else if (isApiResponseT) {
+				// return ReturnTypeKind.ApiResponseT;
+				if (respType is INamedTypeSymbol {
+					IsGenericType: true,
+					TypeArguments: [var sseDataType2, ..]
+				}) {
+					if (sseDataType2.SpecialType == SpecialType.System_String) {
+						return ReturnTypeKind.ApiResponseString;
+					} else if (comparer.Equals(sseDataType2, knownTypes.JsonNode)) {
+						return ReturnTypeKind.ApiResponseJsonNode;
+					} else if (comparer.Equals(sseDataType2, knownTypes.JsonDocument)) {
+						return ReturnTypeKind.ApiResponseJsonDocument;
+					} else {
+						return ReturnTypeKind.ApiResponseT;
+					}
+				} else {
+					throw new NotSupportedException("Unreachable");
+				}
 			} else if (returnsRawResponse) {
 				return ReturnTypeKind.RawResponse;
 			} else {
 				return ReturnTypeKind.Other;
 			}
 		} else {
-			return ReturnTypeKind.Other;
+			return ReturnTypeKind.Void;
 		}
 	}
 }

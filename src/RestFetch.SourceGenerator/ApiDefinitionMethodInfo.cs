@@ -15,18 +15,22 @@ public sealed record ApiDefinitionMethodInfo(
 	bool ReturnsStream,
 	bool ReturnsRawResponse,
 	bool ReturnsIAsyncEnumerableT,
+	bool IsMethodBaseAddress,
 	string Path,
 	string HttpMethod,
 	string BaseAddress,
 	string IdGenerator,
+	string DeserializedResponseTypeName,
 	ReturnTypeWrapperKind AsyncReturnTypeKind,
-	ReturnTypeKind ResponseTypeKind,
-	TypeInfo? ResponseType,
+	ReturnTypeKind ReturnDataTypeKind,
+	TypeInfo? ExceptedReturnType,
+	TypeInfo? ReturnDataType,
 	HookInfo? BeforeSendHook,
 	HookInfo? AfterResponseHook,
 	HookInfo HttpClientProxy,
 	HookInfo ResponseBodyDeserializer,
 	HookInfo? OnError,
+	HookInfo? OnSseEventError,
 	HookInfo? OnSuccess,
 	HookInfo ExceptionFactory,
 	EquatableArray<KeyValuePairInfo> StaticHeaders,
@@ -36,15 +40,15 @@ public sealed record ApiDefinitionMethodInfo(
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
 	private static readonly Dictionary<string, string> HttpMethodAttrMap = new() {
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.GetAttribute", "HttpMethod.Get" },
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.PostAttribute", "HttpMethod.Post" },
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.PutAttribute", "HttpMethod.Put" },
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.PatchAttribute", "HttpMethod.Patch" },
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.DeleteAttribute", "HttpMethod.Delete" },
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.HeadAttribute", "HttpMethod.Head" },
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.OptionsAttribute", "HttpMethod.Options"  },
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.ConnectAttribute", "HttpMethod.Connect"  },
-		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.TraceAttribute", "HttpMethod.Trace"  },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.GetAttribute", "global::System.Net.Http.HttpMethod.Get" },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.PostAttribute", "global::System.Net.Http.HttpMethod.Post" },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.PutAttribute", "global::System.Net.Http.HttpMethod.Put" },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.PatchAttribute", "global::System.Net.Http.HttpMethod.Patch" },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.DeleteAttribute", "global::System.Net.Http.HttpMethod.Delete" },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.HeadAttribute", "global::System.Net.Http.HttpMethod.Head" },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.OptionsAttribute", "global::System.Net.Http.HttpMethod.Options"  },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.ConnectAttribute", "global::System.Net.Http.HttpMethod.Connect"  },
+		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.TraceAttribute", "global::System.Net.Http.HttpMethod.Trace"  },
 	};
 	private static readonly DiagnosticDescriptor HeaderRule0 = new("RestFetch0030",
 		"错误的Metadata构造函数",
@@ -89,7 +93,11 @@ public sealed record ApiDefinitionMethodInfo(
 	public static ApiDefinitionMethodInfo CreateFromSymbol(IMethodSymbol symbol, KnownTypes knownTypes, ApiDefinitionTypeInfo apiDefinitionType) {
 		var methodInfo = MethodInfo.CreateFromSymbol(symbol, knownTypes);
 		var attrList = symbol.GetAttributes();
-		var baseAddress = ApiDefinitionTypeInfo.GetBaseAddress(attrList, knownTypes) ?? apiDefinitionType.BaseAddress;
+		var baseAddress = ApiDefinitionTypeInfo.GetBaseAddress(attrList, knownTypes);
+		var isMethodBaseAddress = baseAddress is not null;
+		if (!isMethodBaseAddress) {
+			baseAddress = apiDefinitionType.BaseAddress;
+		}
 		var staticHeaders = ApiDefinitionTypeInfo.GetStaticHeaders(attrList, knownTypes).ToArray();
 		var validStaticHeaders = staticHeaders
 			.Where(static header => header.Diagnostics is null)
@@ -116,16 +124,9 @@ public sealed record ApiDefinitionMethodInfo(
 		var afterResponseHook = ApiDefinitionTypeInfo.GetAfterResponseHook(attrList, knownTypes) ?? apiDefinitionType.AfterResponseHook;
 		var exceptionFactory = ApiDefinitionTypeInfo.GetExceptionFactory(attrList, knownTypes) ?? apiDefinitionType.ExceptionFactory;
 		var onError = ApiDefinitionTypeInfo.GetOnError(attrList, knownTypes) ?? apiDefinitionType.OnError;
+		var onSseEventError = ApiDefinitionTypeInfo.GetOnSseEventError(attrList, knownTypes) ?? apiDefinitionType.OnSseEventError;
 		var onSuccess = ApiDefinitionTypeInfo.GetOnSuccess(attrList, knownTypes) ?? apiDefinitionType.OnSuccess;
 		// TODO 应当根据方法的返回类型提供默认值,应当检查返回类型是否被默认反序列化器支持
-		var responseBodyDeserializer = GetResponseBodyDeserializer(attrList, knownTypes) ?? new(
-			FullyQualifiedName: "RestFetch.ResponseBodyDeserializer.Default",
-			FullyQualifiedNameWithGlobal: "global::RestFetch.ResponseBodyDeserializer.Default",
-			ConfigureAwait: false,
-			Diagnostics: null,
-			TypeArguments: null,
-			JsonContext: null
-		);
 
 		var miscErrors = new List<DiagnosticInfo>();
 		var parameterExtraInfos = symbol.Parameters.Select(parameter => ApiParameterExtraInfo.CreateFromSymbol(parameter, knownTypes)).ToArray();
@@ -157,47 +158,161 @@ public sealed record ApiDefinitionMethodInfo(
 			));
 		}
 
-		var returnsStream = false;
-		var returnsRawResponse = false;
-		if (symbol.ReturnType is INamedTypeSymbol {
-			IsGenericType: true,
-			TypeArguments: [var responseType, ..]
-		}) {
-			if (responseType.InheritsFrom(knownTypes.Stream)) {
-				returnsStream = true;
-			}
-			if (responseType.ToDisplayString(TypeInfo.FullyQualifiedFormat) == apiDefinitionType.TResponse) {
-				returnsRawResponse = true;
-			}
-		}
-
 		var returnVoid = SymbolEqualityComparer.Default.Equals(symbol.ReturnType.OriginalDefinition, knownTypes.Task)
 			|| SymbolEqualityComparer.Default.Equals(symbol.ReturnType.OriginalDefinition, knownTypes.ValueTask);
 
+		var deserializedRespTypeName = "";
+		var returnsStream = false;
+		var returnsRawResponse = false;
+		var returnsIAsyncEnumerableT = symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.IAsyncEnumerableT);
+		TypeInfo? returnDataType = null;
+		TypeInfo exceptReturnTypeInfo = default!;
+		if (symbol.ReturnType is INamedTypeSymbol {
+			IsGenericType: true,
+			TypeArguments: [var exceptedReturnType, ..]
+		}) {
+			exceptReturnTypeInfo = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(exceptedReturnType, knownTypes);
+			if (exceptedReturnType.InheritsFrom(knownTypes.Stream)) {
+				returnsStream = true;
+			}
+			if (exceptedReturnType.ToDisplayString(TypeInfo.FullyQualifiedFormat) == apiDefinitionType.TResponse) {
+				returnsRawResponse = true;
+			}
+
+			if (returnsIAsyncEnumerableT) {
+				var deserializedRespType = knownTypes.IAsyncEnumerableT!.Construct(knownTypes.SseEventResultT!.Construct(exceptedReturnType));
+				deserializedRespTypeName = deserializedRespType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+			}
+
+			if (exceptedReturnType is INamedTypeSymbol {
+				IsGenericType: true,
+				TypeArguments: [ITypeSymbol returnDatType, ..]
+			}) {
+				if (exceptedReturnType.OriginalDefinition.InheritsFrom(knownTypes.SseEventT)
+					|| exceptedReturnType.OriginalDefinition.InheritsFrom(knownTypes.SseItemT)
+					|| exceptedReturnType.OriginalDefinition.InheritsFrom(knownTypes.ApiResponseT)) {
+					returnDataType = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(returnDatType, knownTypes);
+				}
+			} else {
+				returnDataType = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(exceptedReturnType, knownTypes);
+			}
+		}
+
+		var asyncReturnTypeKind = symbol.ReturnType.GetAsyncReturnTypeKind(knownTypes);
+		var returnDataTypeKind = symbol.ReturnType.GetResponseTypeKind(knownTypes, returnsRawResponse);
+		// var returnWrapperTypeIsTask = symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.TaskT) || symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.ValueTaskT);
+		// var returnWrapperTypeIsAsyncEnumerable = symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.IAsyncEnumerableT);
+		var responseBodyDeserializer = GetResponseBodyDeserializer(attrList, knownTypes);
+		var defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.Json";
+		var callWithGenericArgs = false;
+		var isSseDeserializer = false;
+		if (responseBodyDeserializer is null && returnDataType is not null) {
+			if (asyncReturnTypeKind == ReturnTypeWrapperKind.TaskT || asyncReturnTypeKind == ReturnTypeWrapperKind.ValueTaskT) {
+				if (returnDataTypeKind == ReturnTypeKind.SystemString) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SystemString";
+				} else if (returnDataTypeKind == ReturnTypeKind.Stream) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.Stream";
+				} else if (returnDataTypeKind == ReturnTypeKind.JsonNode) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.JsonNode";
+				} else if (returnDataTypeKind == ReturnTypeKind.JsonDocument) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.JsonDocument";
+				} else if (returnDataTypeKind == ReturnTypeKind.Other) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.Json";
+					callWithGenericArgs = true;
+				} else if (returnDataTypeKind == ReturnTypeKind.ApiResponseT
+					|| returnDataTypeKind == ReturnTypeKind.ApiResponseString
+					|| returnDataTypeKind == ReturnTypeKind.ApiResponseJsonNode
+					|| returnDataTypeKind == ReturnTypeKind.ApiResponseJsonDocument) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.ApiResponse<{returnDataType.FullyQualifiedNameWithGlobal}>";
+				}
+			} else if (asyncReturnTypeKind == ReturnTypeWrapperKind.IAsyncEnumerableT) {
+				isSseDeserializer = true;
+				if (returnDataTypeKind == ReturnTypeKind.SystemString) {
+					if (returnDataType.IsNullable) {
+						defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseOrJsonArray";
+						callWithGenericArgs = true;
+					} else {
+						defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseString";
+					}
+				} else if (returnDataTypeKind == ReturnTypeKind.JsonNode) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseOrJsonArray";
+					callWithGenericArgs = true;
+				} else if (returnDataTypeKind == ReturnTypeKind.JsonDocument) {
+					if (returnDataType.IsNullable) {
+						defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseOrJsonArray";
+						callWithGenericArgs = true;
+					} else {
+						defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseJsonDocument";
+					}
+				} else if (returnDataTypeKind == ReturnTypeKind.SseEvent) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseOrJsonArray";
+					callWithGenericArgs = true;
+				} else if (returnDataTypeKind == ReturnTypeKind.Other) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseOrJsonArray";
+					callWithGenericArgs = true;
+				} else if (returnDataTypeKind == ReturnTypeKind.SseEventT
+					|| returnDataTypeKind == ReturnTypeKind.SseEventString
+					|| returnDataTypeKind == ReturnTypeKind.SseEventJsonNode
+					|| returnDataTypeKind == ReturnTypeKind.SseEventJsonDocument) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseEvent<{returnDataType.FullyQualifiedNameWithGlobal}>";
+				} else if (returnDataTypeKind == ReturnTypeKind.SseItemT
+					|| returnDataTypeKind == ReturnTypeKind.SseItemString
+					|| returnDataTypeKind == ReturnTypeKind.SseItemJsonNode
+					|| returnDataTypeKind == ReturnTypeKind.SseItemJsonDocument) {
+					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SseItem<{returnDataType.FullyQualifiedNameWithGlobal}>";
+				}
+
+			} else {
+				// TODO
+			}
+		} else {
+				// TODO
+		}
+		responseBodyDeserializer = responseBodyDeserializer ?? new(
+			FullyQualifiedName: defaultDeserializer,
+			FullyQualifiedNameWithGlobal: defaultDeserializer,
+			ConfigureAwait: false,
+			Diagnostics: null,
+			TypeArguments: null,
+			JsonContext: null,
+			CallWithGenericArgs: callWithGenericArgs,
+			IsSseDeserializer: isSseDeserializer
+		);
+
+
+		// 对于IAsyncEnumerable<T>应当去掉async关键字
+		// var newMethodInfo = methodInfo with {
+		// 	IsAsyncReturnType = methodInfo.IsAsyncReturnType && !symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.IAsyncEnumerableT)
+		// };
+
 		return new(
+			DeserializedResponseTypeName: deserializedRespTypeName,
 			MethodInfo: methodInfo,
 			IsValid: isValid,
+			IsMethodBaseAddress: isMethodBaseAddress,
 			ReturnsVoid: returnVoid,
-			ReturnsIAsyncEnumerableT: symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.IAsyncEnumerableT),
+			ReturnsIAsyncEnumerableT: returnsIAsyncEnumerableT,
 			ReturnsStream: returnsStream,
 			ReturnsRawResponse: returnsRawResponse,
-			AsyncReturnTypeKind: symbol.ReturnType.GetAsyncReturnTypeKind(knownTypes),
-			ResponseTypeKind: symbol.ReturnType.GetResponseTypeKind(knownTypes, returnsRawResponse),
-			ResponseType: returnVoid ? null : TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(symbol.ReturnType.GetTGeneric()[0], knownTypes),
+			AsyncReturnTypeKind: asyncReturnTypeKind,
+			ReturnDataTypeKind: returnDataTypeKind,
+			ExceptedReturnType: returnVoid ? null : exceptReturnTypeInfo,
+			ReturnDataType: returnDataType,
 			Path: path,
 			PathSegments: pathSegments?.ToImmutableArray(),
 			HttpMethod: httpMethod,
 			ApiParameterExtraInfos: parameterExtraInfos.ToImmutableArray(),
 			IdGenerator: idGenerator,
-			BaseAddress: baseAddress,
+			BaseAddress: baseAddress!,
 			StaticHeaders: validStaticHeaders.ToImmutableArray(),
 			StaticMetadata: validStaticMetadata.ToImmutableArray(),
 			BeforeSendHook: beforeSendHook,
 			AfterResponseHook: afterResponseHook,
 			HttpClientProxy: apiDefinitionType.HttpClientProxy,
 			ExceptionFactory: exceptionFactory,
-			ResponseBodyDeserializer: responseBodyDeserializer,
+			ResponseBodyDeserializer: responseBodyDeserializer!.Value,
 			OnError: onError,
+			OnSseEventError: onSseEventError,
 			OnSuccess: onSuccess,
 			Diagnostics: ImmutableArrayExtension.CombineSafe(
 				headerErrors,
@@ -208,8 +323,9 @@ public sealed record ApiDefinitionMethodInfo(
 				afterResponseHook?.Diagnostics,
 				exceptionFactory.Diagnostics,
 				onError?.Diagnostics,
+				onSseEventError?.Diagnostics,
 				onSuccess?.Diagnostics,
-				responseBodyDeserializer.Diagnostics,
+				responseBodyDeserializer?.Diagnostics,
 				miscErrors.ToImmutableArray()
 			)
 		);
@@ -241,15 +357,17 @@ public sealed record ApiDefinitionMethodInfo(
 		if (responseBodyDeserializer is null || responseBodyDeserializer.AttributeClass is null) {
 			return null;
 		}
-		var responseBodyDeserializerInterface = knownTypes.ResponseBodyDeserializer;
-		var responseBOdyDeserializerGenericInterface = knownTypes.ResponseBodyGenericDeserializer;
 		var targetType = responseBodyDeserializer.AttributeClass.TypeArguments[0];
 		var configureAwait = false;
+		var skipNullableCheck = false;
 		string? jsonContextFullyQualifiedNameWithGlobal = null;
+
 		foreach (var item in responseBodyDeserializer.NamedArguments) {
 			// var (key, value) = item;
 			if (item.Key == "ConfigureAwait") {
 				configureAwait = (bool)item.Value.Value!;
+			} else if (item.Key == "SkipNullableCheck") {
+				skipNullableCheck = (bool)item.Value.Value!;
 			} else if (item.Key == "JsonContext") {
 				if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
 					jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
@@ -267,16 +385,27 @@ public sealed record ApiDefinitionMethodInfo(
 			}
 		}
 
-		return targetType.ImplementsInterface(responseBodyDeserializerInterface) || targetType.ImplementsInterface(responseBOdyDeserializerGenericInterface)
-			? new(
+		var implItf0 = targetType.ImplementsInterface(knownTypes.ResponseBodyDeserializer);
+		var implItf1 = targetType.ImplementsInterface(knownTypes.ResponseBodyGenericDeserializer1);
+		var implItf2 = targetType.ImplementsInterface(knownTypes.ResponseBodyGenericDeserializer2);
+		var implItf3 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableDeserializer);
+		var implItf4 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableGenericDeserializer1);
+		var implItf5 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableGenericDeserializer2);
+
+		if (implItf0 || implItf1 || implItf2 || implItf3 || implItf4 || implItf5) {
+			return new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
 				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 				ConfigureAwait: configureAwait,
+				SkipNullableCheck: skipNullableCheck,
+				CallWithGenericArgs: implItf1 || implItf4,
+				IsSseDeserializer: implItf3 || implItf4 || implItf5,
 				TypeArguments: null,
 				Diagnostics: null
-			)
-			: new(
+			);
+		} else {
+			return new(
 				FullyQualifiedName: targetType.ToDisplayString(),
 				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
 				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
@@ -284,6 +413,7 @@ public sealed record ApiDefinitionMethodInfo(
 				TypeArguments: null,
 				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule6, new(responseBodyDeserializer.GetTypeArgumentLocation()), null)]
 			);
+		}
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -333,7 +463,7 @@ public sealed record ApiDefinitionMethodInfo(
 			}
 
 			foreach (var seg in paramSegments) {
-				if (seg is ParamSegment paramSeg && !@params.Any(p => p.Name == paramSeg.RootParamName)) {
+				if (seg is ParamSegment paramSeg && !@params.Any(p => p.Alias == paramSeg.RootParamName)) {
 					var attrSyntax = httpMethodAttrs[0].ApplicationSyntaxReference?.GetSyntax();
 					var errLocation = Location.None;
 					if (attrSyntax is AttributeSyntax syntax) {
