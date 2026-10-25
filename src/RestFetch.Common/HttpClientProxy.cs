@@ -42,14 +42,11 @@ public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClient
 				EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
 				CertificateRevocationCheckMode = X509RevocationMode.Online
 			}},
-			SharedHandler: false,
-			JsonSerializerOptions: null)) {}
+			SharedHandler: false)) {}
 
 	public HttpClientProxy(HttpMessageHandler handler): this(new HttpClientProxyOptions(
 		Handler: handler,
-		SharedHandler: false,
-		JsonSerializerOptions: null
-	)) => _client = new(handler);
+		SharedHandler: false)) => _client = new(handler);
 
 	public Task<HttpResponseMessage> SendAsync<TRequestBodyContent>(ref readonly ApiContext context, Dictionary<string, string>? headers, TRequestBodyContent? body, CancellationToken token) {
 		// 不using,当HttpResponseMessage被Dispose的时候它会被释放

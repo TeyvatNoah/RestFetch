@@ -26,7 +26,6 @@ internal class BodyAttribute<TSerializer>: Attribute {
 	// 执行hook的时候ConfigureAwait(false)的参数
 	public bool ConfigureAwait = false;
 
-	// TODO 需要源生成器检查类型是JsonSerializeContext
 	public Type? JsonContext;
 
 	public BodyAttribute() {}

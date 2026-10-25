@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -59,11 +58,18 @@ public sealed class RequestBodySerializer {
 			ref readonly ApiContext context,
 			CancellationToken cancellationToken) {
 			if (jsonContext is not null) {
-				var jsonSerializerOptions = ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions;
-				var jsonTypeInfo = ((IJsonTypeInfoResolver)jsonContext).GetTypeInfo(typeof(TRequestBody), jsonSerializerOptions);
-				if (jsonTypeInfo is not null) {
+				var jsonSerializerOptions = new JsonSerializerOptions(((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions) {
+					TypeInfoResolver = jsonContext
+				};
+				if (jsonSerializerOptions.TryGetTypeInfo<TRequestBody?>(out var jsonTypeInfo)) {
 					return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, jsonTypeInfo, new("application/json")));
 				}
+
+				// var jsonSerializerOptions = ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions;
+				// var jsonTypeInfo = ((IJsonTypeInfoResolver)jsonContext).GetTypeInfo(typeof(TRequestBody), jsonSerializerOptions);
+				// if (jsonTypeInfo is not null) {
+				// 	return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, jsonTypeInfo, new("application/json")));
+				// }
 			}
 			return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, new("application/json"),
 					((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options));
@@ -82,13 +88,21 @@ public sealed class RequestBodySerializer {
 			byte[] bytes = default!;
 
 			if (jsonContext is not null) {
-				var jsonSerializerOptions = ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions;
-				var jsonTypeInfo = ((IJsonTypeInfoResolver)jsonContext).GetTypeInfo(typeof(TRequestBody), jsonSerializerOptions);
-				if (jsonTypeInfo is not null) {
+				var jsonSerializerOptions = new JsonSerializerOptions(((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions) {
+					TypeInfoResolver = jsonContext
+				};
+				if (jsonSerializerOptions.TryGetTypeInfo<TRequestBody?>(out var jsonTypeInfo)) {
 					bytes = JsonSerializer.SerializeToUtf8Bytes(value, jsonTypeInfo);
 				} else {
 					bytes = JsonSerializer.SerializeToUtf8Bytes(value, ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options);
 				}
+				// var jsonSerializerOptions = ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions;
+				// var jsonTypeInfo = ((IJsonTypeInfoResolver)jsonContext).GetTypeInfo(typeof(TRequestBody), jsonSerializerOptions);
+				// if (jsonTypeInfo is not null) {
+				// 	bytes = JsonSerializer.SerializeToUtf8Bytes(value, jsonTypeInfo);
+				// } else {
+				// 	bytes = JsonSerializer.SerializeToUtf8Bytes(value, ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options);
+				// }
 			} else {
 				bytes = JsonSerializer.SerializeToUtf8Bytes(value, ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options);
 			}

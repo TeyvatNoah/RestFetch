@@ -4,7 +4,7 @@ namespace RestFetch;
 
 public sealed record HttpClientProxyOptions(
 	HttpMessageHandler Handler,
-	JsonSerializerOptions? SerializerOptions,
-	JsonSerializerOptions? DeserializerOptions,
+	JsonSerializerOptions? SerializerOptions = default,
+	JsonSerializerOptions? DeserializerOptions = default,
 	bool SharedHandler = false
 );

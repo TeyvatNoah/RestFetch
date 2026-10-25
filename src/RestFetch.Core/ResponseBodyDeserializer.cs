@@ -4,6 +4,7 @@ using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace RestFetch;
 
@@ -22,6 +23,30 @@ public sealed class ResponseBodyDeserializer {
 		UnknownTypeHandling = JsonUnknownTypeHandling.JsonElement,
 		Converters = {
 			new JsonStringEnumConverter(JsonNamingPolicy.CamelCase), // AOT仅支持JsonStringEnumConverter<TEnum>
+			new EmptyStringToBoolConverter(),
+			new EmptyStringToByteConverter(),
+			new EmptyStringToSByteConverter(),
+			new EmptyStringToShortConverter(),
+			new EmptyStringToUshortConverter(),
+			new EmptyStringToIntConverter(),
+			new EmptyStringToUintConverter(),
+			new EmptyStringToLongConverter(),
+			new EmptyStringToUlongConverter(),
+			new EmptyStringToDecimalConverter(),
+			new EmptyStringToFloatConverter(),
+			new EmptyStringToDoubleConverter(),
+		}
+	};
+
+	private static readonly JsonSerializerOptions _fastPathOptions = new() {
+		IncludeFields = true,
+		RespectRequiredConstructorParameters = true, // 全局配置了这里就不用了
+		RespectNullableAnnotations = true, // 全局配置了这里就不用了
+		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+		DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
+		UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip,
+		UnknownTypeHandling = JsonUnknownTypeHandling.JsonElement,
+		Converters = {
 			new EmptyStringToBoolConverter(),
 			new EmptyStringToByteConverter(),
 			new EmptyStringToSByteConverter(),
@@ -61,10 +86,21 @@ public sealed class ResponseBodyDeserializer {
 				return Task.FromResult<TResponseBody?>(default);
 			}
 
-			var options = new JsonSerializerOptions(_options) {
-				TypeInfoResolver = jsonContext
-			};
-			return resp.Content.ReadFromJsonAsync<TResponseBody?>(options, cancellationToken);
+			if (jsonContext is not null) {
+				var jsonSerializerOptions = new JsonSerializerOptions(((HttpClientProxyOptions?)context.Options)?.DeserializerOptions ?? _fastPathOptions) {
+					TypeInfoResolver = jsonContext
+				};
+				if (jsonSerializerOptions.TryGetTypeInfo<TResponseBody>(out var typeInfo)) {
+					return resp.Content.ReadFromJsonAsync(typeInfo, cancellationToken);
+				}
+				// var jsonSerializerOptions = ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions ?? _fastPathOptions;
+				// var jsonTypeInfo = ((IJsonTypeInfoResolver)jsonContext).GetTypeInfo(typeof(TResponseBody), jsonSerializerOptions);
+				// if (jsonTypeInfo is JsonTypeInfo<TResponseBody> typeInfo) {
+				// 	return resp.Content.ReadFromJsonAsync(typeInfo, cancellationToken);
+				// }
+			}
+
+			return resp.Content.ReadFromJsonAsync<TResponseBody>(((HttpClientProxyOptions?)context.Options)?.DeserializerOptions ?? _options, cancellationToken);
 		}
 	}
 
@@ -167,18 +203,28 @@ public sealed class ResponseBodyDeserializer {
 						ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 					}
 
-					var opts = new JsonSerializerOptions(_options) {
-						TypeInfoResolver = jsonContext
-					};
 
-					return ParseAsJson(resp, context.Url, opts, cancellationToken);
+					return ParseAsJson(resp, context.Url, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, cancellationToken);
 				}
 
 				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026")]
 				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 				[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HttpContentJsonExtensions))]
-				static async Task<RestFetch.ApiResponse<T?>> ParseAsJson(HttpResponseMessage res, string url, JsonSerializerOptions options, CancellationToken token) {
-					var contentObj = await res.Content.ReadFromJsonAsync<T>(options, token).ConfigureAwait(false);
+				static async Task<RestFetch.ApiResponse<T?>> ParseAsJson(HttpResponseMessage res, string url, JsonSerializerContext? jsonContext, JsonSerializerOptions? options, CancellationToken token) {
+					T? contentObj;
+					if (jsonContext is not null) {
+						var jsonSerializerOptions = new JsonSerializerOptions(options ?? _fastPathOptions) {
+							TypeInfoResolver = jsonContext
+						};
+						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
+							contentObj = await res.Content.ReadFromJsonAsync(typeInfo, token).ConfigureAwait(false);
+						} else {
+							contentObj = await res.Content.ReadFromJsonAsync<T>(options ?? _options, token).ConfigureAwait(false);
+						}
+					} else {
+						contentObj = await res.Content.ReadFromJsonAsync<T>(options ?? _options, token).ConfigureAwait(false);
+					}
+
 					return new(
 						StatusCode: res.StatusCode,
 						ReasonPhrase: res.ReasonPhrase,
@@ -267,16 +313,10 @@ public sealed class ResponseBodyDeserializer {
 						return (IAsyncEnumerable<SseEventResult<T>>)(object)ParseAsSseEvent(resp, cancellationToken);
 #pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
 					} else {
-						var options = new JsonSerializerOptions(_options) {
-							TypeInfoResolver = jsonContext
-						};
-						return ParseAsJson<T>(resp, options, new(context.Id, context.Url), handler, cancellationToken);
+						return ParseAsJson<T>(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), handler, cancellationToken);
 					}
 				} else if (resp.Content.Headers.ContentType?.MediaType == "application/json") {
-					var options = new JsonSerializerOptions(_options) {
-						TypeInfoResolver = jsonContext
-					};
-					return ParseAsJsonArray(resp, options, cancellationToken);
+					return ParseAsJsonArray(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, cancellationToken);
 				} else {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 					return default;
@@ -289,15 +329,36 @@ public sealed class ResponseBodyDeserializer {
 				[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonSerializer))]
 				static async IAsyncEnumerable<SseEventResult<T?>> ParseAsJsonArray(
 					HttpResponseMessage res,
-					JsonSerializerOptions opts,
+					JsonSerializerContext? jsonContext,
+					JsonSerializerOptions? opts,
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
-					await foreach (var item in JsonSerializer.DeserializeAsyncEnumerable<T>(stream, opts, token)
-						.ConfigureAwait(false)) {
-							yield return new SseEventResult<T?>.Ok(item);
+
+					if (jsonContext is not null) {
+						var jsonSerializerOptions = new JsonSerializerOptions(opts ?? _fastPathOptions) {
+							TypeInfoResolver = jsonContext
+						};
+						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
+							await foreach (var item in JsonSerializer.DeserializeAsyncEnumerable(stream, typeInfo, token)
+								.ConfigureAwait(false)) {
+									yield return new SseEventResult<T?>.Ok(item);
+							}
+						} else {
+							var options = opts ?? _options;
+							await foreach (var item in JsonSerializer.DeserializeAsyncEnumerable<T>(stream, options, token)
+								.ConfigureAwait(false)) {
+									yield return new SseEventResult<T?>.Ok(item);
+							}
+						}
+					} else {
+						var options = opts ?? _options;
+						await foreach (var item in JsonSerializer.DeserializeAsyncEnumerable<T>(stream, options, token)
+							.ConfigureAwait(false)) {
+								yield return new SseEventResult<T?>.Ok(item);
 						}
 					}
 				}
+			}
 
 				static async IAsyncEnumerable<SseEventResult<string?>> ParseAsString(
 					HttpResponseMessage res,
@@ -394,32 +455,88 @@ public sealed class ResponseBodyDeserializer {
 				[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonSerializer))]
 				static async IAsyncEnumerable<SseEventResult<T?>> ParseAsJson<T>(
 					HttpResponseMessage res,
-					JsonSerializerOptions opts,
+					JsonSerializerContext? jsonContext,
+					JsonSerializerOptions? opts,
 					ApiMinimalContext ctx,
 					SseEventExceptionHandler? handler,
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
-					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser
-						.Create<SseEventResult<T?>>(stream, (_, data) => {
-							try {
-								return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, opts));
-							} catch(JsonException e0) {
-								var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<T?>.Err(
-									Error: e0,
-									Skip: skipErrorResponse
-								);
-							} catch(NotSupportedException e1) {
-								var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<T?>.Err(
-									Error: e1,
-									Skip: skipErrorResponse
-								);
+					if (jsonContext is not null) {
+						var jsonSerializerOptions = new JsonSerializerOptions(opts ?? _fastPathOptions) {
+							TypeInfoResolver = jsonContext
+						};
+						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
+							// TODO 以后换成自己实现的解析器
+							await foreach (var item in SseParser
+								.Create<SseEventResult<T?>>(stream, (_, data) => {
+									try {
+										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize(data, typeInfo));
+									} catch(JsonException e0) {
+										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e0,
+											Skip: skipErrorResponse
+										);
+									} catch(NotSupportedException e1) {
+										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e1,
+											Skip: skipErrorResponse
+										);
+									}
+								})
+								.EnumerateAsync(token).ConfigureAwait(false)) {
+									yield return item.Data;
 							}
-						})
-						.EnumerateAsync(token)) {
-						yield return item.Data;
+						} else {
+							var options = opts ?? _options;
+							// TODO 以后换成自己实现的解析器
+							await foreach (var item in SseParser
+								.Create<SseEventResult<T?>>(stream, (_, data) => {
+									try {
+										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
+									} catch(JsonException e0) {
+										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e0,
+											Skip: skipErrorResponse
+										);
+									} catch(NotSupportedException e1) {
+										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e1,
+											Skip: skipErrorResponse
+										);
+									}
+								})
+								.EnumerateAsync(token).ConfigureAwait(false)) {
+									yield return item.Data;
+							}
+						}
+					} else {
+						var options = opts ?? _options;
+						// TODO 以后换成自己实现的解析器
+						await foreach (var item in SseParser
+							.Create<SseEventResult<T?>>(stream, (_, data) => {
+								try {
+									return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
+								} catch(JsonException e0) {
+									var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									return new SseEventResult<T?>.Err(
+										Error: e0,
+										Skip: skipErrorResponse
+									);
+								} catch(NotSupportedException e1) {
+									var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									return new SseEventResult<T?>.Err(
+										Error: e1,
+										Skip: skipErrorResponse
+									);
+								}
+							})
+							.EnumerateAsync(token).ConfigureAwait(false)) {
+								yield return item.Data;
+						}
 					}
 				}
 		}
@@ -618,10 +735,7 @@ public sealed class ResponseBodyDeserializer {
 				} else if (typeof(T) == typeof(System.Text.Json.JsonDocument)) {
 					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJsonDocument(resp, new(context.Id, context.Url), handler, cancellationToken);
 				} else {
-					var options = new JsonSerializerOptions(_options) {
-						TypeInfoResolver = jsonContext
-					};
-					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJson(resp, options, new(context.Id, context.Url), handler, cancellationToken);
+					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJson(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), handler, cancellationToken);
 				}
 
 				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<string>>> ParseAsString(
@@ -731,40 +845,112 @@ public sealed class ResponseBodyDeserializer {
 				[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonSerializer))]
 				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T?>>> ParseAsJson(
 					HttpResponseMessage res,
-					JsonSerializerOptions opts,
+					JsonSerializerContext? jsonContext,
+					JsonSerializerOptions? opts,
 					ApiMinimalContext ctx,
 					SseEventExceptionHandler? handler,
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
-					await foreach (var item in SseParser
-						.Create<SseEventResult<T?>>(stream, (_, data) => {
-							try {
-								return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, opts));
-							} catch(JsonException e0) {
-								var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<T?>.Err(
-									Error: e0,
-									Skip: skipErrorResponse
-								);
-							} catch(NotSupportedException e1) {
-								var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<T?>.Err(
-									Error: e1,
-									Skip: true
-								);
+					if (jsonContext is not null) {
+						var jsonSerializerOptions = new JsonSerializerOptions(opts ?? _fastPathOptions) {
+							TypeInfoResolver = jsonContext
+						};
+						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
+							await foreach (var item in SseParser
+								.Create<SseEventResult<T?>>(stream, (_, data) => {
+									try {
+										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize(data, typeInfo));
+									} catch(JsonException e0) {
+										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e0,
+											Skip: skipErrorResponse
+										);
+									} catch(NotSupportedException e1) {
+										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e1,
+											Skip: true
+										);
+									}
+								})
+								.EnumerateAsync(token)
+								.ConfigureAwait(false)) {
+									yield return item.Data switch {
+										SseEventResult<T?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<T?>>.Ok(new(
+											id: item.EventId,
+											@event: item.EventType,
+											retry: item.ReconnectionInterval,
+											data: data
+										)),
+										SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<T?>>.Err(e, skip),
+									};
 							}
-						})
-						.EnumerateAsync(token)
-						.ConfigureAwait(false)) {
-							yield return item.Data switch {
-								SseEventResult<T?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<T?>>.Ok(new(
-									id: item.EventId,
-									@event: item.EventType,
-									retry: item.ReconnectionInterval,
-									data: data
-								)),
-								SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<T?>>.Err(e, skip),
-							};
+						} else {
+							var options = opts ?? _options;
+							await foreach (var item in SseParser
+								.Create<SseEventResult<T?>>(stream, (_, data) => {
+									try {
+										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
+									} catch(JsonException e0) {
+										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e0,
+											Skip: skipErrorResponse
+										);
+									} catch(NotSupportedException e1) {
+										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e1,
+											Skip: true
+										);
+									}
+								})
+								.EnumerateAsync(token)
+								.ConfigureAwait(false)) {
+									yield return item.Data switch {
+										SseEventResult<T?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<T?>>.Ok(new(
+											id: item.EventId,
+											@event: item.EventType,
+											retry: item.ReconnectionInterval,
+											data: data
+										)),
+										SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<T?>>.Err(e, skip),
+									};
+							}
+						}
+					} else {
+						var options = opts ?? _options;
+						await foreach (var item in SseParser
+							.Create<SseEventResult<T?>>(stream, (_, data) => {
+								try {
+									return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
+								} catch(JsonException e0) {
+									var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									return new SseEventResult<T?>.Err(
+										Error: e0,
+										Skip: skipErrorResponse
+									);
+								} catch(NotSupportedException e1) {
+									var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									return new SseEventResult<T?>.Err(
+										Error: e1,
+										Skip: true
+									);
+								}
+							})
+							.EnumerateAsync(token)
+							.ConfigureAwait(false)) {
+								yield return item.Data switch {
+									SseEventResult<T?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<T?>>.Ok(new(
+										id: item.EventId,
+										@event: item.EventType,
+										retry: item.ReconnectionInterval,
+										data: data
+									)),
+									SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<T?>>.Err(e, skip),
+								};
+						}
 					}
 				}
 			}
@@ -799,7 +985,7 @@ public sealed class ResponseBodyDeserializer {
 					var options = new JsonSerializerOptions(_options) {
 						TypeInfoResolver = jsonContext
 					};
-					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJson(resp, options, new(context.Id, context.Url), handler, cancellationToken);
+					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJson(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), handler, cancellationToken);
 				}
 
 				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<string>>> ParseAsString(
@@ -903,41 +1089,116 @@ public sealed class ResponseBodyDeserializer {
 				[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonSerializer))]
 				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>> ParseAsJson(
 					HttpResponseMessage res,
-					JsonSerializerOptions opts,
+					JsonSerializerContext? jsonContext,
+					JsonSerializerOptions? opts,
 					ApiMinimalContext ctx,
 					SseEventExceptionHandler? handler,
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
-					await foreach (var item in SseParser
-						.Create<SseEventResult<T?>>(stream, (_, data) => {
-							try {
-								return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, opts));
-							} catch(JsonException e0) {
-								var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<T?>.Err(
-									Error: e0,
-									Skip: skipErrorResponse
-								);
-							} catch(NotSupportedException e1) {
-								var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<T?>.Err(
-									Error: e1,
-									Skip: skipErrorResponse
-								);
-							}
-						})
-						.EnumerateAsync(token)
-						.ConfigureAwait(false)) {
-						yield return item.Data switch {
-							SseEventResult<T?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Ok(new(
-								data,
-								item.EventType
-							) {
-								EventId = item.EventId,
-								ReconnectionInterval = item.ReconnectionInterval
-							}),
-							SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Err(e, skip),
+
+					if (jsonContext is not null) {
+						var jsonSerializerOptions = new JsonSerializerOptions(opts ?? _fastPathOptions) {
+							TypeInfoResolver = jsonContext
 						};
+						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
+							await foreach (var item in SseParser
+								.Create<SseEventResult<T?>>(stream, (_, data) => {
+									try {
+										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize(data, typeInfo));
+									} catch(JsonException e0) {
+										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e0,
+											Skip: skipErrorResponse
+										);
+									} catch(NotSupportedException e1) {
+										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e1,
+											Skip: skipErrorResponse
+										);
+									}
+								})
+								.EnumerateAsync(token)
+								.ConfigureAwait(false)) {
+								yield return item.Data switch {
+									SseEventResult<T?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Ok(new(
+										data,
+										item.EventType
+									) {
+										EventId = item.EventId,
+										ReconnectionInterval = item.ReconnectionInterval
+									}),
+									SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Err(e, skip),
+								};
+							}
+						} else {
+							var options = opts ?? _options;
+							await foreach (var item in SseParser
+								.Create<SseEventResult<T?>>(stream, (_, data) => {
+									try {
+										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
+									} catch(JsonException e0) {
+										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e0,
+											Skip: skipErrorResponse
+										);
+									} catch(NotSupportedException e1) {
+										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										return new SseEventResult<T?>.Err(
+											Error: e1,
+											Skip: skipErrorResponse
+										);
+									}
+								})
+								.EnumerateAsync(token)
+								.ConfigureAwait(false)) {
+								yield return item.Data switch {
+									SseEventResult<T?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Ok(new(
+										data,
+										item.EventType
+									) {
+										EventId = item.EventId,
+										ReconnectionInterval = item.ReconnectionInterval
+									}),
+									SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Err(e, skip),
+								};
+							}
+						}
+					} else {
+						var options = opts ?? _options;
+						await foreach (var item in SseParser
+							.Create<SseEventResult<T?>>(stream, (_, data) => {
+								try {
+									return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
+								} catch(JsonException e0) {
+									var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									return new SseEventResult<T?>.Err(
+										Error: e0,
+										Skip: skipErrorResponse
+									);
+								} catch(NotSupportedException e1) {
+									var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									return new SseEventResult<T?>.Err(
+										Error: e1,
+										Skip: skipErrorResponse
+									);
+								}
+							})
+							.EnumerateAsync(token)
+							.ConfigureAwait(false)) {
+							yield return item.Data switch {
+								SseEventResult<T?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Ok(new(
+									data,
+									item.EventType
+								) {
+									EventId = item.EventId,
+									ReconnectionInterval = item.ReconnectionInterval
+								}),
+								SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Err(e, skip),
+							};
+						}
 					}
 				}
 			}

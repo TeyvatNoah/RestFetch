@@ -203,7 +203,7 @@ public static class Emitter {
 								.AppendLine($"case global::RestFetch.SseEventResult<{method.ExceptedReturnType.FullyQualifiedNameWithGlobal}>.Err(var __e, true): continue;")
 								.AppendLine($"case global::RestFetch.SseEventResult<{method.ExceptedReturnType.FullyQualifiedNameWithGlobal}>.Err(var __e, false): await {onerror.FullyQualifiedNameWithGlobal}.OnError(__e, in __context, {(cancellationTokenParam is {} token
 						? token.paramInfo.Name
-						: "global::System.Threading.CancellationToken.None")}); throw __e;")
+						: "global::System.Threading.CancellationToken.None")}); global::System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(__e).Throw();")
 								.AppendLine("}\n");
 						})
 						.AppendLine("}\n");
@@ -492,7 +492,7 @@ public static class Emitter {
 			}
 			sb.Append(";\n");
 			sb.AppendLine("if (__exception is not null) {")
-			.AppendLine("global::RestFetch.ThrowHelper.Throw(__exception);")
+			.AppendLine("global::System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(__exception).Throw();")
 			.AppendLine("}\n");
 		}
 	}

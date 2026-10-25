@@ -363,7 +363,6 @@ public sealed record ApiDefinitionMethodInfo(
 		string? jsonContextFullyQualifiedNameWithGlobal = null;
 
 		foreach (var item in responseBodyDeserializer.NamedArguments) {
-			// var (key, value) = item;
 			if (item.Key == "ConfigureAwait") {
 				configureAwait = (bool)item.Value.Value!;
 			} else if (item.Key == "SkipNullableCheck") {
