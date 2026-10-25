@@ -33,3 +33,17 @@ internal class ResponseAttribute<TDeserializer>: Attribute {
 
 	public ResponseAttribute(Type context) => JsonContext = context;
 }
+
+// 用于默认反序列化器
+internal class ResponseAttribute: Attribute {
+	public bool ConfigureAwait = false;
+	// 允许返回类型为非可空,跳过运行时可空类型检查
+	public bool SkipNullableCheck = false;
+
+	// TODO 需要源生成器检查类型是JsonSerializeContext
+	public Type? JsonContext;
+
+	public ResponseAttribute() {}
+
+	public ResponseAttribute(Type context) => JsonContext = context;
+}

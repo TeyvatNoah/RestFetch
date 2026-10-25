@@ -80,6 +80,11 @@ public sealed record ApiDefinitionMethodInfo(
 		"返回类型必须是Task/Task<T>/ValueTask/ValueTask<T>/IAsyncEnumerable<T>/IObservable<T>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
+	private static readonly DiagnosticDescriptor ReturnTypeRule1 = new("RestFetch0081",
+		"不能同时存在多个[Response]或[Response<T>]",
+		"不能同时存在多个[Response]或[Response<T>]",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
+
 	private static readonly DiagnosticDescriptor ParameterRule17 = new("RestFetch0067",
 		"错误的Path格式",
 		"Path中的{}需要闭合",
@@ -204,9 +209,12 @@ public sealed record ApiDefinitionMethodInfo(
 		// var returnWrapperTypeIsAsyncEnumerable = symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.IAsyncEnumerableT);
 		var responseBodyDeserializer = GetResponseBodyDeserializer(attrList, knownTypes);
 		var defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.Json";
+		var skipNullableCheck = responseBodyDeserializer?.SkipNullableCheck ?? false;
+		var responseBodyDeserializerConfigureAwait = responseBodyDeserializer?.ConfigureAwait ?? false;
+		var responseBodyDeserializerJsonContext = responseBodyDeserializer?.JsonContext ?? null;
 		var callWithGenericArgs = false;
 		var isSseDeserializer = false;
-		if (responseBodyDeserializer is null && returnDataType is not null) {
+		if ((responseBodyDeserializer is null || responseBodyDeserializer.Value.FullyQualifiedName == "") && returnDataType is not null) {
 			if (asyncReturnTypeKind == ReturnTypeWrapperKind.TaskT || asyncReturnTypeKind == ReturnTypeWrapperKind.ValueTaskT) {
 				if (returnDataTypeKind == ReturnTypeKind.SystemString) {
 					defaultDeserializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseBodyDeserializer.SystemString";
@@ -268,16 +276,17 @@ public sealed record ApiDefinitionMethodInfo(
 		} else {
 				// TODO
 		}
-		responseBodyDeserializer = responseBodyDeserializer ?? new(
+		responseBodyDeserializer = (responseBodyDeserializer is null || responseBodyDeserializer.Value.FullyQualifiedName == "") ? new(
 			FullyQualifiedName: defaultDeserializer,
 			FullyQualifiedNameWithGlobal: defaultDeserializer,
-			ConfigureAwait: false,
+			ConfigureAwait: responseBodyDeserializerConfigureAwait,
+			SkipNullableCheck: skipNullableCheck,
 			Diagnostics: null,
 			TypeArguments: null,
-			JsonContext: null,
+			JsonContext: responseBodyDeserializerJsonContext,
 			CallWithGenericArgs: callWithGenericArgs,
 			IsSseDeserializer: isSseDeserializer
-		);
+		) : responseBodyDeserializer;
 
 
 		// 对于IAsyncEnumerable<T>应当去掉async关键字
@@ -354,64 +363,124 @@ public sealed record ApiDefinitionMethodInfo(
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static HookInfo? GetResponseBodyDeserializer(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
 		var responseBodyDeserializer = attrs.GetAttributesBySymbol(knownTypes.ResponseAttribute).FirstOrDefault();
-		if (responseBodyDeserializer is null || responseBodyDeserializer.AttributeClass is null) {
+		var responseBodyDeserializerT = attrs.GetAttributesBySymbol(knownTypes.ResponseAttributeT).FirstOrDefault();
+		if (responseBodyDeserializer is not null && responseBodyDeserializerT is not null) {
+			return new(
+				FullyQualifiedName: "",
+				FullyQualifiedNameWithGlobal: "",
+				ConfigureAwait: false,
+				JsonContext: null,
+				TypeArguments: null,
+				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ReturnTypeRule1, new(responseBodyDeserializer.ApplicationSyntaxReference?.GetSyntax().GetLocation()
+				?? responseBodyDeserializerT.ApplicationSyntaxReference?.GetSyntax().GetLocation()
+				?? Location.None), Array.Empty<string>().ToImmutableArray())]
+			);
+		}
+
+		if ((responseBodyDeserializerT is null || responseBodyDeserializerT.AttributeClass is null)
+			&& (responseBodyDeserializer is null || responseBodyDeserializer.AttributeClass is null)) {
 			return null;
 		}
-		var targetType = responseBodyDeserializer.AttributeClass.TypeArguments[0];
-		var configureAwait = false;
-		var skipNullableCheck = false;
-		string? jsonContextFullyQualifiedNameWithGlobal = null;
 
-		foreach (var item in responseBodyDeserializer.NamedArguments) {
-			if (item.Key == "ConfigureAwait") {
-				configureAwait = (bool)item.Value.Value!;
-			} else if (item.Key == "SkipNullableCheck") {
-				skipNullableCheck = (bool)item.Value.Value!;
-			} else if (item.Key == "JsonContext") {
-				if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
-					jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
-				} else {
-					return new(
-						FullyQualifiedName: targetType.ToDisplayString(),
-						FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
-						JsonContext: jsonContextFullyQualifiedNameWithGlobal,
-						ConfigureAwait: configureAwait,
-						TypeArguments: null,
-						Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ApiParameterExtraInfo.ParameterRule16, new(responseBodyDeserializer.GetNamedArgumentLocation("JsonContext")),
-							(ImmutableArray<string>)[item.Value.Value is ITypeSymbol contextType ? contextType.Name : "JsonContext"])]
-					);
+		if (responseBodyDeserializer is not null && responseBodyDeserializer.AttributeClass is not null) {
+			var configureAwait = false;
+			var skipNullableCheck = false;
+			string? jsonContextFullyQualifiedNameWithGlobal = null;
+
+			foreach (var item in responseBodyDeserializer.NamedArguments) {
+				if (item.Key == "ConfigureAwait") {
+					configureAwait = (bool)item.Value.Value!;
+				} else if (item.Key == "SkipNullableCheck") {
+					skipNullableCheck = (bool)item.Value.Value!;
+				} else if (item.Key == "JsonContext") {
+					if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
+						jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+					} else {
+						return new(
+							FullyQualifiedName: "",
+							FullyQualifiedNameWithGlobal: "",
+							JsonContext: jsonContextFullyQualifiedNameWithGlobal,
+							ConfigureAwait: configureAwait,
+							TypeArguments: null,
+							Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ApiParameterExtraInfo.ParameterRule16, new(responseBodyDeserializer.GetNamedArgumentLocation("JsonContext")),
+								(ImmutableArray<string>)[item.Value.Value is ITypeSymbol contextType ? contextType.Name : "JsonContext"])]
+						);
+					}
 				}
 			}
-		}
 
-		var implItf0 = targetType.ImplementsInterface(knownTypes.ResponseBodyDeserializer);
-		var implItf1 = targetType.ImplementsInterface(knownTypes.ResponseBodyGenericDeserializer1);
-		var implItf2 = targetType.ImplementsInterface(knownTypes.ResponseBodyGenericDeserializer2);
-		var implItf3 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableDeserializer);
-		var implItf4 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableGenericDeserializer1);
-		var implItf5 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableGenericDeserializer2);
-
-		if (implItf0 || implItf1 || implItf2 || implItf3 || implItf4 || implItf5) {
+			// NOTE: 只为收集JsonContext,ConfigureAwait,SkipNullableCheck
 			return new(
-				FullyQualifiedName: targetType.ToDisplayString(),
-				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+				FullyQualifiedName: "",
+				FullyQualifiedNameWithGlobal: "",
 				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 				ConfigureAwait: configureAwait,
 				SkipNullableCheck: skipNullableCheck,
-				CallWithGenericArgs: implItf1 || implItf4,
-				IsSseDeserializer: implItf3 || implItf4 || implItf5,
+				CallWithGenericArgs: false,
+				IsSseDeserializer: false,
 				TypeArguments: null,
 				Diagnostics: null
 			);
+
+		} else if (responseBodyDeserializerT is not null && responseBodyDeserializerT.AttributeClass is not null) {
+			var targetType = responseBodyDeserializerT.AttributeClass.TypeArguments[0];
+			var configureAwait = false;
+			var skipNullableCheck = false;
+			string? jsonContextFullyQualifiedNameWithGlobal = null;
+
+			foreach (var item in responseBodyDeserializerT.NamedArguments) {
+				if (item.Key == "ConfigureAwait") {
+					configureAwait = (bool)item.Value.Value!;
+				} else if (item.Key == "SkipNullableCheck") {
+					skipNullableCheck = (bool)item.Value.Value!;
+				} else if (item.Key == "JsonContext") {
+					if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
+						jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+					} else {
+						return new(
+							FullyQualifiedName: targetType.ToDisplayString(),
+							FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+							JsonContext: jsonContextFullyQualifiedNameWithGlobal,
+							ConfigureAwait: configureAwait,
+							TypeArguments: null,
+							Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(ApiParameterExtraInfo.ParameterRule16, new(responseBodyDeserializerT.GetNamedArgumentLocation("JsonContext")),
+								(ImmutableArray<string>)[item.Value.Value is ITypeSymbol contextType ? contextType.Name : "JsonContext"])]
+						);
+					}
+				}
+			}
+
+			var implItf0 = targetType.ImplementsInterface(knownTypes.ResponseBodyDeserializer);
+			var implItf1 = targetType.ImplementsInterface(knownTypes.ResponseBodyGenericDeserializer1);
+			var implItf2 = targetType.ImplementsInterface(knownTypes.ResponseBodyGenericDeserializer2);
+			var implItf3 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableDeserializer);
+			var implItf4 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableGenericDeserializer1);
+			var implItf5 = targetType.ImplementsInterface(knownTypes.ResponseAsyncEnumerableGenericDeserializer2);
+
+			if (implItf0 || implItf1 || implItf2 || implItf3 || implItf4 || implItf5) {
+				return new(
+					FullyQualifiedName: targetType.ToDisplayString(),
+					FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+					JsonContext: jsonContextFullyQualifiedNameWithGlobal,
+					ConfigureAwait: configureAwait,
+					SkipNullableCheck: skipNullableCheck,
+					CallWithGenericArgs: implItf1 || implItf4,
+					IsSseDeserializer: implItf3 || implItf4 || implItf5,
+					TypeArguments: null,
+					Diagnostics: null
+				);
+			} else {
+				return new(
+					FullyQualifiedName: targetType.ToDisplayString(),
+					FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
+					JsonContext: jsonContextFullyQualifiedNameWithGlobal,
+					ConfigureAwait: configureAwait,
+					TypeArguments: null,
+					Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule6, new(responseBodyDeserializerT.GetTypeArgumentLocation()), null)]
+				);
+			}
 		} else {
-			return new(
-				FullyQualifiedName: targetType.ToDisplayString(),
-				FullyQualifiedNameWithGlobal: targetType.ToDisplayString(TypeInfo.FullyQualifiedFormat),
-				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
-				ConfigureAwait: configureAwait,
-				TypeArguments: null,
-				Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule6, new(responseBodyDeserializer.GetTypeArgumentLocation()), null)]
-			);
+			return null;
 		}
 	}
 

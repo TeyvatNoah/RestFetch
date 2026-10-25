@@ -14,7 +14,8 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? IAsyncEnumerableT = compilation.GetTypeByMetadataName("System.Collections.Generic.IAsyncEnumerable`1");
 	public readonly INamedTypeSymbol? AsyncMethodBuilderAttribute = compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.AsyncMethodBuilderAttribute");
 	public readonly INamedTypeSymbol? MetadataAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.MetadataAttribute");
-	public readonly INamedTypeSymbol? ResponseAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseAttribute`1");
+	public readonly INamedTypeSymbol? ResponseAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseAttribute");
+	public readonly INamedTypeSymbol? ResponseAttributeT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ResponseAttribute`1");
 	public readonly INamedTypeSymbol? ResponseBodyDeserializer = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseBodyDeserializer")!;
 	public readonly INamedTypeSymbol? ResponseBodyGenericDeserializer1 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseBodyDeserializer`1");
 	public readonly INamedTypeSymbol? ResponseBodyGenericDeserializer2 = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IResponseBodyDeserializer`2");
@@ -100,6 +101,7 @@ public sealed class KnownTypes(Compilation compilation)
 		AsyncMethodBuilderAttribute,
 		MetadataAttribute,
 		ResponseAttribute,
+		ResponseAttributeT,
 		ResponseBodyDeserializer,
 		ResponseBodyGenericDeserializer1,
 		ResponseBodyGenericDeserializer2,
@@ -174,6 +176,7 @@ public sealed class KnownTypes(Compilation compilation)
 		&& Comparer.Equals(left.AsyncMethodBuilderAttribute, right.AsyncMethodBuilderAttribute)
 		&& Comparer.Equals(left.MetadataAttribute, right.MetadataAttribute)
 		&& Comparer.Equals(left.ResponseAttribute, right.ResponseAttribute)
+		&& Comparer.Equals(left.ResponseAttributeT, right.ResponseAttributeT)
 		&& Comparer.Equals(left.ResponseBodyDeserializer, right.ResponseBodyDeserializer)
 		&& Comparer.Equals(left.ResponseBodyGenericDeserializer1, right.ResponseBodyGenericDeserializer1)
 		&& Comparer.Equals(left.ResponseBodyGenericDeserializer2, right.ResponseBodyGenericDeserializer2)
