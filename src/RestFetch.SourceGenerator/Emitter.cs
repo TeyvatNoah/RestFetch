@@ -101,6 +101,8 @@ public static class Emitter {
 											if (method.OnError is null) {
 												sb.AppendLine("try {")
 													.CreateIndent(sb => {
+														// NOTE: 这里不加WithCancellation()了,因为即便加了也是使用反序列化器相同的CancellationToken对象
+														// 而这个token在反序列化器中已经处理过了,我们必须假定反序列化器的实现者会正确处理这个token
 														sb.AppendLine("await foreach (var item in __respBody.ConfigureAwait(false)) {")
 														.CreateIndent(sb => {
 															sb.AppendLine("switch (item) {")
@@ -196,6 +198,8 @@ public static class Emitter {
 			if (method.ReturnsIAsyncEnumerableT) {
 				sb.AppendLine("try {")
 					.CreateIndent(sb => {
+						// NOTE: 这里不加WithCancellation()了,因为即便加了也是使用反序列化器相同的CancellationToken对象
+						// 而这个token在反序列化器中已经处理过了,我们必须假定反序列化器的实现者会正确处理这个token
 						sb.AppendLine("await foreach (var item in __respBody.ConfigureAwait(false)) {")
 						.CreateIndent(sb => {
 							sb.AppendLine("switch (item) {")
@@ -550,12 +554,9 @@ public static class Emitter {
 		if (method.ReturnsIAsyncEnumerableT) {
 			sb.AppendLine($@"{(method.OnError is null ? "var " : "")}__respBody = {
 				method.ResponseBodyDeserializer.FullyQualifiedNameWithGlobal
-				}.Parse{(method.ResponseBodyDeserializer.CallWithGenericArgs ? $"<{
-					method.ReturnDataType!.FullyQualifiedNameWithGlobal
-					}>" : "")}
+				}.Parse<{(method.ResponseBodyDeserializer.CallWithGenericArgs ? $"{method.ReturnDataType!.FullyQualifiedNameWithGlobal}, " : "")}{method.OnSseEventError?.FullyQualifiedNameWithGlobal ?? $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.DefaultSseEventErrorHandler"}>
 					(__resp, in __returnTypeInfo, in __context, {(method.ResponseBodyDeserializer.JsonContext is null
-					? "null" : $"{method.ResponseBodyDeserializer.JsonContext}.Default")}, {(method.OnSseEventError is null
-					? "null" : $"{method.OnSseEventError.Value.FullyQualifiedNameWithGlobal}.OnSseEventError")}, {(cancellationTokenParam is {} token
+					? "null" : $"{method.ResponseBodyDeserializer.JsonContext}.Default")}, {(cancellationTokenParam is {} token
 				? token.paramInfo.Name
 				: "global::System.Threading.CancellationToken.None")});")
 				.AppendLine("");
@@ -578,7 +579,7 @@ public static class Emitter {
 				&& !method.ReturnDataType.IsNullable && !method.ResponseBodyDeserializer.SkipNullableCheck) {
 				sb.AppendLine("if (__respBody is null) {");
 				sb.CreateIndent(sb => {
-					sb.AppendLine($"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ReturnTypeException.Throw();");
+					sb.AppendLine($"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.ReturnTypeException.Throw(__context.MethodName, __context.ClassName);");
 				});
 				sb.AppendLine("}\n");
 			}

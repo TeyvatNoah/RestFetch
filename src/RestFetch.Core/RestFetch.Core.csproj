@@ -34,6 +34,8 @@
 		<!-- 用来收集源生成器输出目录的dll给nuget pack使用 -->
 		<SgOutputDir>../RestFetch.SourceGenerator/bin/$(Configuration)/netstandard2.0</SgOutputDir>
 		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_PackSourceGeneratorDlls</TargetsForTfmSpecificContentInPackage>
+
+    <NoWarn>$(NoWarn);CS8387</NoWarn>
   </PropertyGroup>
 
   <!-- Debug配置 -->

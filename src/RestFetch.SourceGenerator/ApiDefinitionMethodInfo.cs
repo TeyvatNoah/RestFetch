@@ -281,11 +281,11 @@ public sealed record ApiDefinitionMethodInfo(
 			FullyQualifiedNameWithGlobal: defaultDeserializer,
 			ConfigureAwait: responseBodyDeserializerConfigureAwait,
 			SkipNullableCheck: skipNullableCheck,
-			Diagnostics: null,
 			TypeArguments: null,
 			JsonContext: responseBodyDeserializerJsonContext,
 			CallWithGenericArgs: callWithGenericArgs,
-			IsSseDeserializer: isSseDeserializer
+			IsSseDeserializer: isSseDeserializer,
+			Diagnostics: responseBodyDeserializer?.Diagnostics
 		) : responseBodyDeserializer;
 
 

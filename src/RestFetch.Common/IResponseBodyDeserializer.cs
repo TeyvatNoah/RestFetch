@@ -13,18 +13,15 @@ public interface IResponseBodyDeserializer<in TResponse, TReturn> where TRespons
 public interface IResponseBodyDeserializer: IResponseBodyDeserializer<HttpResponseMessage>;
 
 public interface IResponseAsyncEnumerableDeserializer<in TResponse> where TResponse: IDisposable {
-	static abstract IAsyncEnumerable<SseEventResult<TReturn?>> Parse<TReturn>(TResponse resp, ref readonly ReturnTypeInfo returnTypeInfo, ref readonly ApiContext context, JsonSerializerContext? jsonContext, SseEventExceptionHandler? handler, CancellationToken cancellationToken);
+	static abstract IAsyncEnumerable<SseEventResult<TReturn?>> Parse<TReturn, TSseEventOnError>(TResponse resp, ref readonly ReturnTypeInfo returnTypeInfo, ref readonly ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken) where TSseEventOnError: IOnSseEventError;
 }
 
 public interface IResponseAsyncEnumerableDeserializer<in TResponse, TReturn> where TResponse: IDisposable {
-	static abstract IAsyncEnumerable<SseEventResult<TReturn?>> Parse(TResponse resp, ref readonly ReturnTypeInfo returnTypeInfo, ref readonly ApiContext context, JsonSerializerContext? jsonContext, SseEventExceptionHandler? handler, CancellationToken cancellationToken);
+	static abstract IAsyncEnumerable<SseEventResult<TReturn?>> Parse<TSseEventOnError>(TResponse resp, ref readonly ReturnTypeInfo returnTypeInfo, ref readonly ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken) where TSseEventOnError: IOnSseEventError;
 }
 
 public interface IResponseAsyncEnumerableDeserializer: IResponseAsyncEnumerableDeserializer<HttpResponseMessage>;
 
-// NOTE: 不用ValueTask,因为Task<bool>有缓存优化不会有堆分配
-// 受限于API,这里不使用ApiContext,仅传递最小必要信息,请求ID和URL
-public delegate Task<bool> SseEventExceptionHandler(Exception error, ApiMinimalContext context);
 
 
 // TODO Task不支持协变

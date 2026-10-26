@@ -82,6 +82,10 @@ public sealed class ResponseBodyDeserializer {
 				ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 			}
 
+			if (!returnTypeInfo.SkipNullableCheck && !returnTypeInfo.Nullable && !returnTypeInfo.ValueType) {
+				ReturnTypeException.Throw(context.MethodName, context.ClassName);
+			}
+
 			if (resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0) {
 				return Task.FromResult<TResponseBody?>(default);
 			}
@@ -191,7 +195,7 @@ public sealed class ResponseBodyDeserializer {
 				}
 
 				if (!returnTypeInfo.SkipNullableCheck && !returnTypeInfo.Nullable && !returnTypeInfo.ValueType) {
-					ReturnTypeException.Throw();
+					ReturnTypeException.Throw(context.MethodName, context.ClassName);
 				}
 
 				if (typeof(T) == typeof(string)) {
@@ -288,32 +292,32 @@ public sealed class ResponseBodyDeserializer {
 
 	public sealed class SseOrJsonArray: IResponseAsyncEnumerableDeserializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static IAsyncEnumerable<SseEventResult<T?>> Parse<T>(
+		public static IAsyncEnumerable<SseEventResult<T?>> Parse<T, TSseEventOnError>(
 			HttpResponseMessage resp,
 			ref readonly ReturnTypeInfo returnTypeInfo,
 			ref readonly ApiContext context,
 			JsonSerializerContext? jsonContext,
-			SseEventExceptionHandler? handler,
-			CancellationToken cancellationToken) {
+			CancellationToken cancellationToken)
+			where TSseEventOnError: IOnSseEventError {
 				if (resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0) {
 					return AsyncEnumerable.Empty<SseEventResult<T?>>();
 				} else if (resp.Content.Headers.ContentType?.MediaType == "text/event-stream") {
 					if (!returnTypeInfo.SkipNullableCheck && !returnTypeInfo.Nullable && !returnTypeInfo.ValueType) {
-						ReturnTypeException.Throw();
+						ReturnTypeException.Throw(context.MethodName, context.ClassName);
 					}
 
 					if (typeof(T) == typeof(string)) {
 						return (IAsyncEnumerable<SseEventResult<T?>>)(object)ParseAsString(resp, cancellationToken);
 					} else if (typeof(T) == typeof(System.Text.Json.Nodes.JsonNode)) {
-						return (IAsyncEnumerable<SseEventResult<T?>>)(object)ParseAsJsonNode(resp, new(context.Id, context.Url), handler, cancellationToken);
+						return (IAsyncEnumerable<SseEventResult<T?>>)(object)ParseAsJsonNode<TSseEventOnError>(resp, new(context.Id, context.Url), cancellationToken);
 					} else if (typeof(T) == typeof(System.Text.Json.JsonDocument)) {
-						return (IAsyncEnumerable<SseEventResult<T?>>)(object)ParseAsJsonDocument(resp, new(context.Id, context.Url), handler, cancellationToken);
+						return (IAsyncEnumerable<SseEventResult<T?>>)(object)ParseAsJsonDocument<TSseEventOnError>(resp, new(context.Id, context.Url), cancellationToken);
 					} else if (typeof(T) == typeof(WebUtilities.SseEvent)) {
 #pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
 						return (IAsyncEnumerable<SseEventResult<T>>)(object)ParseAsSseEvent(resp, cancellationToken);
 #pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
 					} else {
-						return ParseAsJson<T>(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), handler, cancellationToken);
+						return ParseAsJson<T, TSseEventOnError>(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), cancellationToken);
 					}
 				} else if (resp.Content.Headers.ContentType?.MediaType == "application/json") {
 					return ParseAsJsonArray(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, cancellationToken);
@@ -334,28 +338,37 @@ public sealed class ResponseBodyDeserializer {
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 
+					IAsyncEnumerator<T?>? enumerator;
 					if (jsonContext is not null) {
 						var jsonSerializerOptions = new JsonSerializerOptions(opts ?? _fastPathOptions) {
 							TypeInfoResolver = jsonContext
 						};
 						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
-							await foreach (var item in JsonSerializer.DeserializeAsyncEnumerable(stream, typeInfo, token)
-								.ConfigureAwait(false)) {
-									yield return new SseEventResult<T?>.Ok(item);
-							}
+							enumerator = JsonSerializer.DeserializeAsyncEnumerable(stream, typeInfo, token).GetAsyncEnumerator(token);
 						} else {
-							var options = opts ?? _options;
-							await foreach (var item in JsonSerializer.DeserializeAsyncEnumerable<T>(stream, options, token)
-								.ConfigureAwait(false)) {
-									yield return new SseEventResult<T?>.Ok(item);
-							}
+							enumerator = JsonSerializer.DeserializeAsyncEnumerable<T>(stream, opts ?? _options, token).GetAsyncEnumerator(token);
 						}
 					} else {
-						var options = opts ?? _options;
-						await foreach (var item in JsonSerializer.DeserializeAsyncEnumerable<T>(stream, options, token)
-							.ConfigureAwait(false)) {
-								yield return new SseEventResult<T?>.Ok(item);
+						enumerator = JsonSerializer.DeserializeAsyncEnumerable<T>(stream, opts ?? _options, token).GetAsyncEnumerator(token);
+					}
+
+					try {
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							yield return new SseEventResult<T?>.Ok(enumerator.Current);
 						}
+					} finally {
+						await enumerator.DisposeAsync().ConfigureAwait(false);
 					}
 				}
 			}
@@ -365,73 +378,134 @@ public sealed class ResponseBodyDeserializer {
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create(stream).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return new SseEventResult<string?>.Ok(item.Data);
+
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<string>>? enumerator = default;
+					try {
+						enumerator = SseParser.Create(stream).EnumerateAsync(token).GetAsyncEnumerator(token);
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							yield return new SseEventResult<string?>.Ok(enumerator.Current.Data);
+						}
+
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 
-				static async IAsyncEnumerable<SseEventResult<System.Text.Json.Nodes.JsonNode?>> ParseAsJsonNode(
+				static async IAsyncEnumerable<SseEventResult<System.Text.Json.Nodes.JsonNode?>> ParseAsJsonNode<TSseEventOnError>(
 					HttpResponseMessage res,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
-						stream,
-						(eventType, data) => {
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.Nodes.JsonNode?>>>? enumerator = default;
+					try {
+						enumerator = SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
+							stream,
+							(eventType, data) => {
+									try {
+										return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(System.Text.Json.Nodes.JsonNode.Parse(
+											data,
+											new() {
+												PropertyNameCaseInsensitive = true
+											},
+											new() {
+												AllowDuplicateProperties = false,
+												AllowTrailingCommas = false,
+												CommentHandling = JsonCommentHandling.Skip,
+												MaxDepth = 64
+										}));
+									} catch(JsonException e) {
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
+										return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(
+											Error: e,
+											Skip: skipErrorResponse
+										);
+									}
+								}).EnumerateAsync(token).GetAsyncEnumerator(token);
+
+							while (true) {
+								bool hasNext;
 								try {
-									return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(System.Text.Json.Nodes.JsonNode.Parse(
-										data,
-										new() {
-											PropertyNameCaseInsensitive = true
-										},
+									hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+								} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+									yield break;
+								}
+
+								if (!hasNext) {
+									yield break;
+								}
+
+								yield return enumerator.Current.Data;
+							}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
+					}
+				}
+
+				static async IAsyncEnumerable<SseEventResult<System.Text.Json.JsonDocument?>> ParseAsJsonDocument<TSseEventOnError>(
+					HttpResponseMessage res,
+					ApiMinimalContext ctx,
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
+					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
+					// TODO 以后换成自己实现的解析器
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.JsonDocument?>>>? enumerator = default;
+					try {
+						enumerator = SseParser.Create<SseEventResult<System.Text.Json.JsonDocument?>>(
+							stream,
+							(eventType, data) => {
+								try {
+									return new SseEventResult<System.Text.Json.JsonDocument?>.Ok(System.Text.Json.JsonDocument.Parse(
+										data.ToArray(), // 无法零堆分配和拷贝
 										new() {
 											AllowDuplicateProperties = false,
 											AllowTrailingCommas = false,
 											CommentHandling = JsonCommentHandling.Skip,
 											MaxDepth = 64
-									}));
+										}));
 								} catch(JsonException e) {
-									var skipErrorResponse = handler?.Invoke(e, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-									return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
+									return new SseEventResult<System.Text.Json.JsonDocument?>.Err(
 										Error: e,
 										Skip: skipErrorResponse
 									);
 								}
-							}).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return item.Data;
-					}
-				}
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
 
-				static async IAsyncEnumerable<SseEventResult<System.Text.Json.JsonDocument?>> ParseAsJsonDocument(
-					HttpResponseMessage res,
-					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
-					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
-					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create<SseEventResult<System.Text.Json.JsonDocument?>>(
-						stream,
-						(eventType, data) => {
-							try {
-								return new SseEventResult<System.Text.Json.JsonDocument?>.Ok(System.Text.Json.JsonDocument.Parse(
-									data.ToArray(), // 无法零堆分配和拷贝
-									new() {
-										AllowDuplicateProperties = false,
-										AllowTrailingCommas = false,
-										CommentHandling = JsonCommentHandling.Skip,
-										MaxDepth = 64
-									}));
-							} catch(JsonException e) {
-								var skipErrorResponse = handler?.Invoke(e, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<System.Text.Json.JsonDocument?>.Err(
-									Error: e,
-									Skip: skipErrorResponse
-								);
+							while (true) {
+								bool hasNext;
+								try {
+									hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+								} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+									yield break;
+								}
+
+								if (!hasNext) {
+									yield break;
+								}
+
+								yield return enumerator.Current.Data;
 							}
-						}).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return item.Data;
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 
@@ -440,103 +514,132 @@ public sealed class ResponseBodyDeserializer {
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create(stream).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return new SseEventResult<WebUtilities.SseEvent>.Ok(new(
-							id: item.EventId,
-							@event: item.EventType,
-							retry: item.ReconnectionInterval,
-							data: item.Data
-						));
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<string>>? enumerator = default;
+					try {
+						enumerator = SseParser.Create(stream).EnumerateAsync(token).GetAsyncEnumerator(token);
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
+							yield return new SseEventResult<WebUtilities.SseEvent>.Ok(new(
+								id: item.EventId,
+								@event: item.EventType,
+								retry: item.ReconnectionInterval,
+								data: item.Data
+							));
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 
 				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026")]
 				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 				[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonSerializer))]
-				static async IAsyncEnumerable<SseEventResult<T?>> ParseAsJson<T>(
+				static async IAsyncEnumerable<SseEventResult<T?>> ParseAsJson<T, TSseEventOnError>(
 					HttpResponseMessage res,
 					JsonSerializerContext? jsonContext,
 					JsonSerializerOptions? opts,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
+
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<T?>>>?  enumerator;
 					if (jsonContext is not null) {
 						var jsonSerializerOptions = new JsonSerializerOptions(opts ?? _fastPathOptions) {
 							TypeInfoResolver = jsonContext
 						};
 						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
 							// TODO 以后换成自己实现的解析器
-							await foreach (var item in SseParser
-								.Create<SseEventResult<T?>>(stream, (_, data) => {
+							enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 									try {
 										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize(data, typeInfo));
 									} catch(JsonException e0) {
-										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e0,
 											Skip: skipErrorResponse
 										);
 									} catch(NotSupportedException e1) {
-										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e1,
 											Skip: skipErrorResponse
 										);
 									}
-								})
-								.EnumerateAsync(token).ConfigureAwait(false)) {
-									yield return item.Data;
-							}
+								}).EnumerateAsync(token).GetAsyncEnumerator(token);
 						} else {
 							var options = opts ?? _options;
 							// TODO 以后换成自己实现的解析器
-							await foreach (var item in SseParser
-								.Create<SseEventResult<T?>>(stream, (_, data) => {
+							enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 									try {
 										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
 									} catch(JsonException e0) {
-										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e0,
 											Skip: skipErrorResponse
 										);
 									} catch(NotSupportedException e1) {
-										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e1,
 											Skip: skipErrorResponse
 										);
 									}
-								})
-								.EnumerateAsync(token).ConfigureAwait(false)) {
-									yield return item.Data;
-							}
+								}).EnumerateAsync(token).GetAsyncEnumerator(token);
 						}
 					} else {
 						var options = opts ?? _options;
 						// TODO 以后换成自己实现的解析器
-						await foreach (var item in SseParser
-							.Create<SseEventResult<T?>>(stream, (_, data) => {
+						enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 								try {
 									return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
 								} catch(JsonException e0) {
-									var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 									return new SseEventResult<T?>.Err(
 										Error: e0,
 										Skip: skipErrorResponse
 									);
 								} catch(NotSupportedException e1) {
-									var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 									return new SseEventResult<T?>.Err(
 										Error: e1,
 										Skip: skipErrorResponse
 									);
 								}
-							})
-							.EnumerateAsync(token).ConfigureAwait(false)) {
-								yield return item.Data;
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
+					}
+
+					try {
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							yield return enumerator.Current.Data;
 						}
+					} finally {
+						await enumerator.DisposeAsync().ConfigureAwait(false);
 					}
 				}
 		}
@@ -544,14 +647,14 @@ public sealed class ResponseBodyDeserializer {
 	public sealed class SseString: IResponseAsyncEnumerableDeserializer<HttpResponseMessage, string> {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 #pragma warning disable CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
-		public static IAsyncEnumerable<SseEventResult<string>> Parse(
+		public static IAsyncEnumerable<SseEventResult<string>> Parse<TSseEventOnError>(
 #pragma warning restore CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
 			HttpResponseMessage resp,
 			ref readonly ReturnTypeInfo returnTypeInfo,
 			ref readonly ApiContext context,
 			JsonSerializerContext? jsonContext,
-			SseEventExceptionHandler? handler,
-			CancellationToken cancellationToken) {
+			CancellationToken cancellationToken)
+			where TSseEventOnError: IOnSseEventError {
 				if (resp.Content.Headers.ContentType?.MediaType != "text/event-stream") {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
@@ -564,8 +667,27 @@ public sealed class ResponseBodyDeserializer {
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create(stream).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return new SseEventResult<string>.Ok(item.Data);
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<string>>? enumerator = default;
+					try {
+						enumerator = SseParser.Create(stream).EnumerateAsync(token).GetAsyncEnumerator(token);
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							yield return new SseEventResult<string>.Ok(enumerator.Current.Data);
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 			}
@@ -574,51 +696,71 @@ public sealed class ResponseBodyDeserializer {
 
 	public sealed class SseJsonNode: IResponseAsyncEnumerableDeserializer<HttpResponseMessage, System.Text.Json.Nodes.JsonNode?> {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static IAsyncEnumerable<SseEventResult<System.Text.Json.Nodes.JsonNode?>> Parse(
+		public static IAsyncEnumerable<SseEventResult<System.Text.Json.Nodes.JsonNode?>> Parse<TSseEventOnError>(
 			HttpResponseMessage resp,
 			ref readonly ReturnTypeInfo returnTypeInfo,
 			ref readonly ApiContext context,
 			JsonSerializerContext? jsonContext,
-			SseEventExceptionHandler? handler,
-			CancellationToken cancellationToken) {
+			CancellationToken cancellationToken)
+			where TSseEventOnError: IOnSseEventError {
 				if (resp.Content.Headers.ContentType?.MediaType != "text/event-stream") {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
 				return resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0
 				? AsyncEnumerable.Empty<SseEventResult<System.Text.Json.Nodes.JsonNode?>>()
-				: ParseInternal(resp, new(context.Id, context.Url), handler, cancellationToken);
+				: ParseInternal<TSseEventOnError>(resp, new(context.Id, context.Url), cancellationToken);
 
-				static async IAsyncEnumerable<SseEventResult<System.Text.Json.Nodes.JsonNode?>> ParseInternal(
+				static async IAsyncEnumerable<SseEventResult<System.Text.Json.Nodes.JsonNode?>> ParseInternal<TSseEventOnError>(
 					HttpResponseMessage res,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
-						stream,
-						(eventType, data) => {
-							try {
-								return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(System.Text.Json.Nodes.JsonNode.Parse(
-									data,
-									new() {
-										PropertyNameCaseInsensitive = true
-									},
-									new() {
-										AllowDuplicateProperties = false,
-										AllowTrailingCommas = false,
-										CommentHandling = JsonCommentHandling.Skip,
-										MaxDepth = 64
-									}));
-							} catch(JsonException e) {
-								var skipErrorResponse = handler?.Invoke(e, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(
-									Error: e,
-									Skip: skipErrorResponse
-								);
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.Nodes.JsonNode?>>>? enumerator = default;
+					try {
+						enumerator = SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
+							stream,
+							(eventType, data) => {
+								try {
+									return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(System.Text.Json.Nodes.JsonNode.Parse(
+										data,
+										new() {
+											PropertyNameCaseInsensitive = true
+										},
+										new() {
+											AllowDuplicateProperties = false,
+											AllowTrailingCommas = false,
+											CommentHandling = JsonCommentHandling.Skip,
+											MaxDepth = 64
+										}));
+								} catch(JsonException e) {
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
+									return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(
+										Error: e,
+										Skip: skipErrorResponse
+									);
+								}
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
+
+							while (true) {
+								bool hasNext;
+								try {
+									hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+								} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+									yield break;
+								}
+
+								if (!hasNext) {
+									yield break;
+								}
+
+								yield return enumerator.Current.Data;
 							}
-						}).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return item.Data;
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 			}
@@ -627,49 +769,71 @@ public sealed class ResponseBodyDeserializer {
 	public sealed class SseJsonDocument: IResponseAsyncEnumerableDeserializer<HttpResponseMessage, System.Text.Json.JsonDocument> {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 #pragma warning disable CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
-		public static IAsyncEnumerable<SseEventResult<System.Text.Json.JsonDocument>> Parse(
+		public static IAsyncEnumerable<SseEventResult<System.Text.Json.JsonDocument>> Parse<TSseEventOnError>(
 #pragma warning restore CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
 			HttpResponseMessage resp,
 			ref readonly ReturnTypeInfo returnTypeInfo,
 			ref readonly ApiContext context,
 			JsonSerializerContext? jsonContext,
-			SseEventExceptionHandler? handler,
-			CancellationToken cancellationToken) {
+			CancellationToken cancellationToken)
+			where TSseEventOnError: IOnSseEventError {
 				if (resp.Content.Headers.ContentType?.MediaType != "text/event-stream") {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
 				return resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0
 				? AsyncEnumerable.Empty<SseEventResult<System.Text.Json.JsonDocument>>()
-				: ParseInternal(resp, new(context.Id, context.Url), handler, cancellationToken);
+				: ParseInternal<TSseEventOnError>(resp, new(context.Id, context.Url), cancellationToken);
 
-				static async IAsyncEnumerable<SseEventResult<System.Text.Json.JsonDocument>> ParseInternal(
+				static async IAsyncEnumerable<SseEventResult<System.Text.Json.JsonDocument>> ParseInternal<TSseEventOnError>(
 					HttpResponseMessage res,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
+
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create<SseEventResult<System.Text.Json.JsonDocument>>(
-						stream,
-						(eventType, data) => {
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.JsonDocument>>>? enumerator = default;
+
+					try {
+						enumerator = SseParser.Create<SseEventResult<System.Text.Json.JsonDocument>>(
+							stream,
+							(eventType, data) => {
+								try {
+									return new SseEventResult<System.Text.Json.JsonDocument>.Ok(System.Text.Json.JsonDocument.Parse(
+										data.ToArray(), // 无法零堆分配和拷贝
+										new() {
+											AllowDuplicateProperties = false,
+											AllowTrailingCommas = false,
+											CommentHandling = JsonCommentHandling.Skip,
+											MaxDepth = 64
+										}));
+								} catch(JsonException e) {
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
+									return new SseEventResult<System.Text.Json.JsonDocument>.Err(
+										Error: e,
+										Skip: skipErrorResponse
+									);
+								}
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
+
+						while (true) {
+							bool hasNext;
 							try {
-								return new SseEventResult<System.Text.Json.JsonDocument>.Ok(System.Text.Json.JsonDocument.Parse(
-									data.ToArray(), // 无法零堆分配和拷贝
-									new() {
-										AllowDuplicateProperties = false,
-										AllowTrailingCommas = false,
-										CommentHandling = JsonCommentHandling.Skip,
-										MaxDepth = 64
-									}));
-							} catch(JsonException e) {
-								var skipErrorResponse = handler?.Invoke(e, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<System.Text.Json.JsonDocument>.Err(
-									Error: e,
-									Skip: skipErrorResponse
-								);
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
 							}
-						}).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return item.Data;
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							yield return enumerator.Current.Data;
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 			}
@@ -677,13 +841,13 @@ public sealed class ResponseBodyDeserializer {
 
 	public sealed class SseEvent: IResponseAsyncEnumerableDeserializer<HttpResponseMessage, WebUtilities.SseEvent> {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent>> Parse(
+		public static IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent>> Parse<TSseEventOnError>(
 			HttpResponseMessage resp,
 			ref readonly ReturnTypeInfo returnTypeInfo,
 			ref readonly ApiContext context,
 			JsonSerializerContext? jsonContext,
-			SseEventExceptionHandler? handler,
-			CancellationToken cancellationToken) {
+			CancellationToken cancellationToken)
+			where TSseEventOnError: IOnSseEventError {
 				if (resp.Content.Headers.ContentType?.MediaType != "text/event-stream") {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
@@ -696,13 +860,34 @@ public sealed class ResponseBodyDeserializer {
 					[EnumeratorCancellation]CancellationToken token) {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create(stream).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return new SseEventResult<WebUtilities.SseEvent>.Ok(new(
-							id: item.EventId,
-							@event: item.EventType,
-							retry: item.ReconnectionInterval,
-							data: item.Data
-						));
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<string>>? enumerator = default;
+
+					try {
+						enumerator = SseParser.Create(stream).EnumerateAsync(token).GetAsyncEnumerator(token);
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
+							yield return new SseEventResult<WebUtilities.SseEvent>.Ok(new(
+								id: item.EventId,
+								@event: item.EventType,
+								retry: item.ReconnectionInterval,
+								data: item.Data
+							));
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 			}
@@ -711,19 +896,19 @@ public sealed class ResponseBodyDeserializer {
 
 	public sealed class SseEvent<T>: IResponseAsyncEnumerableDeserializer<HttpResponseMessage, WebUtilities.SseEvent<T>> {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>> Parse(
+		public static IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>> Parse<TSseEventOnError>(
 			HttpResponseMessage resp,
 			ref readonly ReturnTypeInfo returnTypeInfo,
 			ref readonly ApiContext context,
 			JsonSerializerContext? jsonContext,
-			SseEventExceptionHandler? handler,
-			CancellationToken cancellationToken) {
+			CancellationToken cancellationToken)
+			where TSseEventOnError: IOnSseEventError {
 				if (resp.Content.Headers.ContentType?.MediaType != "text/event-stream") {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
 
 				if (!returnTypeInfo.SkipNullableCheck && !returnTypeInfo.Nullable && !returnTypeInfo.ValueType) {
-					ReturnTypeException.Throw();
+					ReturnTypeException.Throw(context.MethodName, context.ClassName);
 				}
 
 				if (resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0) {
@@ -731,11 +916,11 @@ public sealed class ResponseBodyDeserializer {
 				} else if (typeof(T) == typeof(string)) {
 					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsString(resp, cancellationToken);
 				} else if (typeof(T) == typeof(System.Text.Json.Nodes.JsonNode)) {
-					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJsonNode(resp, new(context.Id, context.Url), handler, cancellationToken);
+					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJsonNode<TSseEventOnError>(resp, new(context.Id, context.Url), cancellationToken);
 				} else if (typeof(T) == typeof(System.Text.Json.JsonDocument)) {
-					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJsonDocument(resp, new(context.Id, context.Url), handler, cancellationToken);
+					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJsonDocument<TSseEventOnError>(resp, new(context.Id, context.Url), cancellationToken);
 				} else {
-					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJson(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), handler, cancellationToken);
+					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJson<TSseEventOnError>(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), cancellationToken);
 				}
 
 				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<string>>> ParseAsString(
@@ -744,233 +929,291 @@ public sealed class ResponseBodyDeserializer {
 
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create(stream).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return new SseEventResult<WebUtilities.SseEvent<string>>.Ok(new(
-							id: item.EventId,
-							@event: item.EventType,
-							retry: item.ReconnectionInterval,
-							data: item.Data
-						));
-					}
-				}
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<string>>? enumerator = default;
 
-				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<System.Text.Json.JsonDocument?>>> ParseAsJsonDocument(
-					HttpResponseMessage res,
-					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
-
-					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
-					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create<SseEventResult<System.Text.Json.JsonDocument?>>(
-						stream,
-						(eventType, data) => {
+					try {
+						enumerator = SseParser.Create(stream).EnumerateAsync(token).GetAsyncEnumerator(token);
+						while (true) {
+							bool hasNext;
 							try {
-								return new SseEventResult<System.Text.Json.JsonDocument?>.Ok(System.Text.Json.JsonDocument.Parse(
-									data.ToArray(), // 无法零堆分配和拷贝
-									new() {
-										AllowDuplicateProperties = false,
-										AllowTrailingCommas = false,
-										CommentHandling = JsonCommentHandling.Skip,
-										MaxDepth = 64
-									}));
-							} catch(JsonException e) {
-								var skipErrorResponse = handler?.Invoke(e, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<System.Text.Json.JsonDocument?>.Err(
-									Error: e,
-									Skip: skipErrorResponse
-								);
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
 							}
-						}).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return item.Data switch {
-							SseEventResult<System.Text.Json.JsonDocument?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<System.Text.Json.JsonDocument?>>.Ok(new(
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
+							yield return new SseEventResult<WebUtilities.SseEvent<string>>.Ok(new(
 								id: item.EventId,
 								@event: item.EventType,
 								retry: item.ReconnectionInterval,
-								data: data
-							)),
-							SseEventResult<System.Text.Json.JsonDocument?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<System.Text.Json.JsonDocument?>>.Err(
-								Error: e,
-								Skip: skip
-							)
-						};
+								data: item.Data
+							));
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 
-				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<System.Text.Json.Nodes.JsonNode?>>> ParseAsJsonNode(
+				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<System.Text.Json.JsonDocument?>>> ParseAsJsonDocument<TSseEventOnError>(
 					HttpResponseMessage res,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
-						stream,
-						(eventType, data) => {
+
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.JsonDocument?>>>? enumerator = default;
+
+					try {
+						enumerator = SseParser.Create<SseEventResult<System.Text.Json.JsonDocument?>>(
+							stream,
+							(eventType, data) => {
+								try {
+									return new SseEventResult<System.Text.Json.JsonDocument?>.Ok(System.Text.Json.JsonDocument.Parse(
+										data.ToArray(), // 无法零堆分配和拷贝
+										new() {
+											AllowDuplicateProperties = false,
+											AllowTrailingCommas = false,
+											CommentHandling = JsonCommentHandling.Skip,
+											MaxDepth = 64
+										}));
+								} catch(JsonException e) {
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
+									return new SseEventResult<System.Text.Json.JsonDocument?>.Err(
+										Error: e,
+										Skip: skipErrorResponse
+									);
+								}
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
+
+						while (true) {
+							bool hasNext;
 							try {
-								return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(System.Text.Json.Nodes.JsonNode.Parse(
-									data,
-									new() {
-										PropertyNameCaseInsensitive = true
-									},
-									new() {
-										AllowDuplicateProperties = false,
-										AllowTrailingCommas = false,
-										CommentHandling = JsonCommentHandling.Skip,
-										MaxDepth = 64
-									}));
-							} catch(JsonException e) {
-								var skipErrorResponse = handler?.Invoke(e, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(
-									Error: e,
-									Skip: skipErrorResponse
-								);
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
 							}
-						}).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return item.Data switch {
-							SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<System.Text.Json.Nodes.JsonNode?>>.Ok(new(
-								id: item.EventId,
-								@event: item.EventType,
-								retry: item.ReconnectionInterval,
-								data: data
-							)),
-							SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<System.Text.Json.Nodes.JsonNode?>>.Err(e, skip),
-						};
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
+							yield return item.Data switch {
+								SseEventResult<System.Text.Json.JsonDocument?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<System.Text.Json.JsonDocument?>>.Ok(new(
+									id: item.EventId,
+									@event: item.EventType,
+									retry: item.ReconnectionInterval,
+									data: data
+								)),
+								SseEventResult<System.Text.Json.JsonDocument?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<System.Text.Json.JsonDocument?>>.Err(
+									Error: e,
+									Skip: skip
+								)
+							};
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
+					}
+				}
+
+				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<System.Text.Json.Nodes.JsonNode?>>> ParseAsJsonNode<TSseEventOnError>(
+					HttpResponseMessage res,
+					ApiMinimalContext ctx,
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
+
+					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
+					// TODO 以后换成自己实现的解析器
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.Nodes.JsonNode?>>>? enumerator = default;
+
+					try {
+						enumerator = SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
+							stream,
+							(eventType, data) => {
+								try {
+									return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(System.Text.Json.Nodes.JsonNode.Parse(
+										data,
+										new() {
+											PropertyNameCaseInsensitive = true
+										},
+										new() {
+											AllowDuplicateProperties = false,
+											AllowTrailingCommas = false,
+											CommentHandling = JsonCommentHandling.Skip,
+											MaxDepth = 64
+										}));
+								} catch(JsonException e) {
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
+									return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(
+										Error: e,
+										Skip: skipErrorResponse
+									);
+								}
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
+
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
+							yield return item.Data switch {
+								SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<System.Text.Json.Nodes.JsonNode?>>.Ok(new(
+									id: item.EventId,
+									@event: item.EventType,
+									retry: item.ReconnectionInterval,
+									data: data
+								)),
+								SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<System.Text.Json.Nodes.JsonNode?>>.Err(e, skip),
+							};
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 
 				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026")]
 				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 				[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonSerializer))]
-				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T?>>> ParseAsJson(
+				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T?>>> ParseAsJson<TSseEventOnError>(
 					HttpResponseMessage res,
 					JsonSerializerContext? jsonContext,
 					JsonSerializerOptions? opts,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
+
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<T?>>>? enumerator;
 					if (jsonContext is not null) {
 						var jsonSerializerOptions = new JsonSerializerOptions(opts ?? _fastPathOptions) {
 							TypeInfoResolver = jsonContext
 						};
 						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
-							await foreach (var item in SseParser
-								.Create<SseEventResult<T?>>(stream, (_, data) => {
+							enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 									try {
 										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize(data, typeInfo));
 									} catch(JsonException e0) {
-										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e0,
 											Skip: skipErrorResponse
 										);
 									} catch(NotSupportedException e1) {
-										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e1,
 											Skip: true
 										);
 									}
-								})
-								.EnumerateAsync(token)
-								.ConfigureAwait(false)) {
-									yield return item.Data switch {
-										SseEventResult<T?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<T?>>.Ok(new(
-											id: item.EventId,
-											@event: item.EventType,
-											retry: item.ReconnectionInterval,
-											data: data
-										)),
-										SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<T?>>.Err(e, skip),
-									};
-							}
+								}).EnumerateAsync(token).GetAsyncEnumerator(token);
 						} else {
 							var options = opts ?? _options;
-							await foreach (var item in SseParser
-								.Create<SseEventResult<T?>>(stream, (_, data) => {
+							enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 									try {
 										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
 									} catch(JsonException e0) {
-										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e0,
 											Skip: skipErrorResponse
 										);
 									} catch(NotSupportedException e1) {
-										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e1,
 											Skip: true
 										);
 									}
-								})
-								.EnumerateAsync(token)
-								.ConfigureAwait(false)) {
-									yield return item.Data switch {
-										SseEventResult<T?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<T?>>.Ok(new(
-											id: item.EventId,
-											@event: item.EventType,
-											retry: item.ReconnectionInterval,
-											data: data
-										)),
-										SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<T?>>.Err(e, skip),
-									};
-							}
+								}).EnumerateAsync(token).GetAsyncEnumerator(token);
 						}
 					} else {
 						var options = opts ?? _options;
-						await foreach (var item in SseParser
-							.Create<SseEventResult<T?>>(stream, (_, data) => {
+						enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 								try {
 									return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
 								} catch(JsonException e0) {
-									var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 									return new SseEventResult<T?>.Err(
 										Error: e0,
 										Skip: skipErrorResponse
 									);
 								} catch(NotSupportedException e1) {
-									var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 									return new SseEventResult<T?>.Err(
 										Error: e1,
 										Skip: true
 									);
 								}
-							})
-							.EnumerateAsync(token)
-							.ConfigureAwait(false)) {
-								yield return item.Data switch {
-									SseEventResult<T?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<T?>>.Ok(new(
-										id: item.EventId,
-										@event: item.EventType,
-										retry: item.ReconnectionInterval,
-										data: data
-									)),
-									SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<T?>>.Err(e, skip),
-								};
-						}
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
 					}
+
+					try {
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
+							yield return item.Data switch {
+								SseEventResult<T?>.Ok(var data) => new SseEventResult<WebUtilities.SseEvent<T?>>.Ok(new(
+									id: item.EventId,
+									@event: item.EventType,
+									retry: item.ReconnectionInterval,
+									data: data
+								)),
+								SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<WebUtilities.SseEvent<T?>>.Err(e, skip),
+							};
+						}
+					} finally {
+						await enumerator.DisposeAsync().ConfigureAwait(false);
+					}
+
 				}
 			}
 	}
 
 	public sealed class SseItem<T>: IResponseAsyncEnumerableDeserializer<HttpResponseMessage, System.Net.ServerSentEvents.SseItem<T>> {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>> Parse(
+		public static IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>> Parse<TSseEventOnError>(
 			HttpResponseMessage resp,
 			ref readonly ReturnTypeInfo returnTypeInfo,
 			ref readonly ApiContext context,
 			JsonSerializerContext? jsonContext,
-			SseEventExceptionHandler? handler,
-			CancellationToken cancellationToken) {
+			CancellationToken cancellationToken)
+			where TSseEventOnError: IOnSseEventError {
 				if (resp.Content.Headers.ContentType?.MediaType != "text/event-stream") {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
 
 				if (!returnTypeInfo.SkipNullableCheck && !returnTypeInfo.Nullable && !returnTypeInfo.ValueType) {
-					ReturnTypeException.Throw();
+					ReturnTypeException.Throw(context.MethodName, context.ClassName);
 				}
 
 				if (resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0) {
@@ -978,14 +1221,14 @@ public sealed class ResponseBodyDeserializer {
 				} else if (typeof(T) == typeof(string)) {
 					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsString(resp, cancellationToken);
 				} else if (typeof(T) == typeof(System.Text.Json.Nodes.JsonNode)) {
-					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJsonNode(resp, new(context.Id, context.Url), handler, cancellationToken);
+					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJsonNode<TSseEventOnError>(resp, new(context.Id, context.Url), cancellationToken);
 				} else if (typeof(T) == typeof(System.Text.Json.JsonDocument)) {
-					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJsonDocument(resp, new(context.Id, context.Url), handler, cancellationToken);
+					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJsonDocument<TSseEventOnError>(resp, new(context.Id, context.Url), cancellationToken);
 				} else {
 					var options = new JsonSerializerOptions(_options) {
 						TypeInfoResolver = jsonContext
 					};
-					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJson(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), handler, cancellationToken);
+					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJson<TSseEventOnError>(resp, jsonContext, ((HttpClientProxyOptions?)context.Options)?.DeserializerOptions, new(context.Id, context.Url), cancellationToken);
 				}
 
 				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<string>>> ParseAsString(
@@ -994,39 +1237,76 @@ public sealed class ResponseBodyDeserializer {
 
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create(stream).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return new SseEventResult<System.Net.ServerSentEvents.SseItem<string>>.Ok(item);
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<string>>? enumerator = default;
+
+					try {
+						enumerator = SseParser.Create(stream).EnumerateAsync(token).GetAsyncEnumerator(token);
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							yield return new SseEventResult<System.Net.ServerSentEvents.SseItem<string>>.Ok(enumerator.Current);
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 
-				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.JsonDocument?>>> ParseAsJsonDocument(
+				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.JsonDocument?>>> ParseAsJsonDocument<TSseEventOnError>(
 					HttpResponseMessage res,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create<SseEventResult<System.Text.Json.JsonDocument?>>(
-						stream,
-						(eventType, data) => {
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.JsonDocument?>>>? enumerator = default;
+
+					try {
+						enumerator = SseParser.Create<SseEventResult<System.Text.Json.JsonDocument?>>(
+							stream,
+							(eventType, data) => {
+								try {
+									return new SseEventResult<System.Text.Json.JsonDocument?>.Ok(System.Text.Json.JsonDocument.Parse(
+										data.ToArray(), // 无法零堆分配和拷贝
+										new() {
+											AllowDuplicateProperties = false,
+											AllowTrailingCommas = false,
+											CommentHandling = JsonCommentHandling.Skip,
+											MaxDepth = 64
+										}));
+								} catch(JsonException e) {
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
+									return new SseEventResult<System.Text.Json.JsonDocument?>.Err(
+										Error: e,
+										Skip: skipErrorResponse
+									);
+								}
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
+
+						while (true) {
+							bool hasNext;
 							try {
-								return new SseEventResult<System.Text.Json.JsonDocument?>.Ok(System.Text.Json.JsonDocument.Parse(
-									data.ToArray(), // 无法零堆分配和拷贝
-									new() {
-										AllowDuplicateProperties = false,
-										AllowTrailingCommas = false,
-										CommentHandling = JsonCommentHandling.Skip,
-										MaxDepth = 64
-									}));
-							} catch(JsonException e) {
-								var skipErrorResponse = handler?.Invoke(e, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<System.Text.Json.JsonDocument?>.Err(
-									Error: e,
-									Skip: skipErrorResponse
-								);
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
 							}
-						}).EnumerateAsync(token).ConfigureAwait(false)) {
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
 							yield return item.Data switch {
 								SseEventResult<System.Text.Json.JsonDocument?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.JsonDocument?>>.Ok(new(
 									data,
@@ -1037,157 +1317,171 @@ public sealed class ResponseBodyDeserializer {
 								}),
 								SseEventResult<System.Text.Json.JsonDocument?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.JsonDocument?>>.Err(e, skip),
 							};
+						}
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 
-				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.Nodes.JsonNode?>>> ParseAsJsonNode(
+				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.Nodes.JsonNode?>>> ParseAsJsonNode<TSseEventOnError>(
 					HttpResponseMessage res,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
-					await foreach (var item in SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
-						stream,
-						(eventType, data) => {
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.Nodes.JsonNode?>>>? enumerator = default;
+
+					try {
+						enumerator = SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
+							stream,
+							(eventType, data) => {
+								try {
+									return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(System.Text.Json.Nodes.JsonNode.Parse(
+										data,
+										new() {
+											PropertyNameCaseInsensitive = true
+										},
+										new() {
+											AllowDuplicateProperties = false,
+											AllowTrailingCommas = false,
+											CommentHandling = JsonCommentHandling.Skip,
+											MaxDepth = 64
+										}));
+								} catch(JsonException e) {
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
+									return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(
+										Error: e,
+										Skip: skipErrorResponse
+									);
+								}
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
+
+						while (true) {
+							bool hasNext;
 							try {
-								return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(System.Text.Json.Nodes.JsonNode.Parse(
-									data,
-									new() {
-										PropertyNameCaseInsensitive = true
-									},
-									new() {
-										AllowDuplicateProperties = false,
-										AllowTrailingCommas = false,
-										CommentHandling = JsonCommentHandling.Skip,
-										MaxDepth = 64
-									}));
-							} catch(JsonException e) {
-								var skipErrorResponse = handler?.Invoke(e, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
-								return new SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(
-									Error: e,
-									Skip: skipErrorResponse
-								);
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
 							}
-						}).EnumerateAsync(token).ConfigureAwait(false)) {
-						yield return item.Data switch {
-							SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.Nodes.JsonNode?>>.Ok(new(
-								data,
-								item.EventType
-							) {
-								EventId = item.EventId,
-								ReconnectionInterval = item.ReconnectionInterval
-							}),
-							SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.Nodes.JsonNode?>>.Err(e, skip),
-						};
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
+							yield return item.Data switch {
+								SseEventResult<System.Text.Json.Nodes.JsonNode?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.Nodes.JsonNode?>>.Ok(new(
+									data,
+									item.EventType
+								) {
+									EventId = item.EventId,
+									ReconnectionInterval = item.ReconnectionInterval
+								}),
+								SseEventResult<System.Text.Json.Nodes.JsonNode?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<System.Text.Json.Nodes.JsonNode?>>.Err(e, skip),
+							};
+						}
+
+					} finally {
+						if (enumerator is not null) {
+							await enumerator.DisposeAsync().ConfigureAwait(false);
+						}
 					}
 				}
 
 				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026")]
 				[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 				[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonSerializer))]
-				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>> ParseAsJson(
+				static async IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>> ParseAsJson<TSseEventOnError>(
 					HttpResponseMessage res,
 					JsonSerializerContext? jsonContext,
 					JsonSerializerOptions? opts,
 					ApiMinimalContext ctx,
-					SseEventExceptionHandler? handler,
-					[EnumeratorCancellation]CancellationToken token) {
+					[EnumeratorCancellation]CancellationToken token)
+					where TSseEventOnError: IOnSseEventError {
 					var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 
+					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<T?>>>? enumerator;
 					if (jsonContext is not null) {
 						var jsonSerializerOptions = new JsonSerializerOptions(opts ?? _fastPathOptions) {
 							TypeInfoResolver = jsonContext
 						};
 						if (jsonSerializerOptions.TryGetTypeInfo<T?>(out var typeInfo)) {
-							await foreach (var item in SseParser
-								.Create<SseEventResult<T?>>(stream, (_, data) => {
+							enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 									try {
 										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize(data, typeInfo));
 									} catch(JsonException e0) {
-										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e0,
 											Skip: skipErrorResponse
 										);
 									} catch(NotSupportedException e1) {
-										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e1,
 											Skip: skipErrorResponse
 										);
 									}
-								})
-								.EnumerateAsync(token)
-								.ConfigureAwait(false)) {
-								yield return item.Data switch {
-									SseEventResult<T?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Ok(new(
-										data,
-										item.EventType
-									) {
-										EventId = item.EventId,
-										ReconnectionInterval = item.ReconnectionInterval
-									}),
-									SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Err(e, skip),
-								};
-							}
+								}).EnumerateAsync(token).GetAsyncEnumerator(token);
 						} else {
 							var options = opts ?? _options;
-							await foreach (var item in SseParser
-								.Create<SseEventResult<T?>>(stream, (_, data) => {
+							enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 									try {
 										return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
 									} catch(JsonException e0) {
-										var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e0,
 											Skip: skipErrorResponse
 										);
 									} catch(NotSupportedException e1) {
-										var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+										var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 										return new SseEventResult<T?>.Err(
 											Error: e1,
 											Skip: skipErrorResponse
 										);
 									}
-								})
-								.EnumerateAsync(token)
-								.ConfigureAwait(false)) {
-								yield return item.Data switch {
-									SseEventResult<T?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Ok(new(
-										data,
-										item.EventType
-									) {
-										EventId = item.EventId,
-										ReconnectionInterval = item.ReconnectionInterval
-									}),
-									SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Err(e, skip),
-								};
-							}
+								}).EnumerateAsync(token).GetAsyncEnumerator(token);
 						}
 					} else {
 						var options = opts ?? _options;
-						await foreach (var item in SseParser
-							.Create<SseEventResult<T?>>(stream, (_, data) => {
+						enumerator = SseParser.Create<SseEventResult<T?>>(stream, (_, data) => {
 								try {
 									return new SseEventResult<T?>.Ok(JsonSerializer.Deserialize<T>(data, options));
 								} catch(JsonException e0) {
-									var skipErrorResponse = handler?.Invoke(e0, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e0, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 									return new SseEventResult<T?>.Err(
 										Error: e0,
 										Skip: skipErrorResponse
 									);
 								} catch(NotSupportedException e1) {
-									var skipErrorResponse = handler?.Invoke(e1, ctx).ConfigureAwait(false).GetAwaiter().GetResult() ?? true;
+									var skipErrorResponse = TSseEventOnError.OnSseEventError(e1, ctx, token).ConfigureAwait(false).GetAwaiter().GetResult();
 									return new SseEventResult<T?>.Err(
 										Error: e1,
 										Skip: skipErrorResponse
 									);
 								}
-							})
-							.EnumerateAsync(token)
-							.ConfigureAwait(false)) {
+							}).EnumerateAsync(token).GetAsyncEnumerator(token);
+					}
+
+					try {
+						while (true) {
+							bool hasNext;
+							try {
+								hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+							} catch(OperationCanceledException) when (token.IsCancellationRequested) {
+								yield break;
+							}
+
+							if (!hasNext) {
+								yield break;
+							}
+
+							var item = enumerator.Current;
 							yield return item.Data switch {
 								SseEventResult<T?>.Ok(var data) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Ok(new(
 									data,
@@ -1199,7 +1493,10 @@ public sealed class ResponseBodyDeserializer {
 								SseEventResult<T?>.Err(var e, var skip) => new SseEventResult<System.Net.ServerSentEvents.SseItem<T?>>.Err(e, skip),
 							};
 						}
+					} finally {
+						await enumerator.DisposeAsync().ConfigureAwait(false);
 					}
+
 				}
 			}
 	}
