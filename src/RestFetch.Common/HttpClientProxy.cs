@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -6,26 +7,29 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace RestFetch;
 
-public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClientProxy<HttpClient, HttpResponseMessage> {
-	private readonly bool _sharedClient = options switch {
-		HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SharedClient,
-		HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions => false
-	};
+public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClientProxy<HttpClientProxy, HttpResponseMessage> {
+	private readonly Func<HttpClient>? _factory = options is HttpClientProxyOptions.HttpClientProxyFactoryOptions o ? o.Factory : null;
 
-	private readonly HttpClient _client = options switch {
-		HttpClientProxyOptions.HttpClientProxyClientOptions o => o.Client,
-		HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => new(o.Handler, !o.SharedHandler)
-	};
+	private readonly HttpClient? _client = options is HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o ? new(o.Handler, !o.SharedHandler) : null;
 
 	public object? Options { get; init; } = options;
 
-	public string BaseAddress { get => _client.BaseAddress?.ToString() ?? ""; set => _client.BaseAddress = new(value, new UriCreationOptions() {
-		DangerousDisablePathAndQueryCanonicalization = true
-	}); }
+	public required string? BaseAddress {
+		get => _client?.BaseAddress?.ToString() ?? field;
+		set {
+			if (_client is null) {
+				field = value;
+			} else {
+				_client.BaseAddress = value is null ? null : new(value, new UriCreationOptions {
+					DangerousDisablePathAndQueryCanonicalization = true
+				});
+			}
+		}
+	}
 
 
 	public HttpClientProxy(): this(new HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions(
-		Handler: new SocketsHttpHandler() {
+		new SocketsHttpHandler() {
 			// Proxy = new WebProxy("http://127.0.0.1:2333", false),
 			AllowAutoRedirect = true,
 			AutomaticDecompression = DecompressionMethods.All,
@@ -36,16 +40,17 @@ public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClient
 			SslOptions = new() {
 				EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
 				CertificateRevocationCheckMode = X509RevocationMode.Online
-			}},
-			SharedHandler: false)) {}
+			}}) {
+				SharedHandler = false
+			}) {}
 
-	public HttpClientProxy(HttpMessageHandler handler): this(new HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions(
-		Handler: handler,
-		SharedHandler: false)) => _client = new(handler);
+	public HttpClientProxy(HttpMessageHandler handler): this(new HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions(handler) {
+		SharedHandler = false
+	}) {}
 
-	public HttpClientProxy(HttpClient client, bool sharedClient = true): this(new HttpClientProxyOptions.HttpClientProxyClientOptions(
-		Client: client,
-		SharedClient: sharedClient)) {}
+	// public HttpClientProxy(HttpClient client, bool sharedClient = true): this(new HttpClientProxyOptions.HttpClientProxyClientOptions(
+	// 	Client: client,
+	// 	SharedClient: sharedClient)) {}
 
 	[DoesNotReturn]
 	private static void ThrowHeaderException(string key, string value) => throw new InvalidOperationException($"Cannot add HTTP header '{key}': '{value}'.");
@@ -90,24 +95,31 @@ public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClient
 			}
 		}
 
-		return _client.SendAsync(msg, context.ReturnsAsyncEnumerable ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead, token);
+		var client = _factory?.Invoke() is HttpClient c ? resourceManager.TakeOwnership(c) : _client;
+
+		if (client is null) {
+			ThrowUnreachableException(nameof(client));
+		}
+
+		return client.SendAsync(msg, context.ReturnsAsyncEnumerable ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead, token);
+	}
+
+	[DoesNotReturn]
+	private static void ThrowUnreachableException(string name) {
+		throw new UnreachableException($"The {name} cannot be null.");
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static IHttpClientProxy<HttpClient, HttpResponseMessage> Create(string baseAddress)
+	public static HttpClientProxy Create(string? baseAddress)
 		=> new HttpClientProxy() {
 			BaseAddress = baseAddress
 		};
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static IHttpClientProxy<HttpClient, HttpResponseMessage> Create(HttpClient client)
-		=> new HttpClientProxy(client);
+	// [MethodImpl(MethodImplOptions.AggressiveInlining)]
+	// public static IHttpClientProxyService<HttpResponseMessage> Create(HttpClient client)
+	// 	=> new HttpClientProxy(client);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public void Dispose() {
-		if (!_sharedClient) {
-			_client.Dispose();
-		}
-	}
+	public void Dispose() => _client?.Dispose();
 }
 

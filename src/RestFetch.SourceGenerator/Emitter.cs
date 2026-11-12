@@ -19,19 +19,20 @@ public static class Emitter {
 					},
 					sb => sb.CreateIndent(sb => {
 
-					sb.Append($$"""
-							struct ClientWrapper(global::{{RestFetchSourceGenerator.RestFetchNamespaceName}}.IHttpClientProxy<{{apiDefinition.THttpClient}}, {{apiDefinition.TResponse}}> client) {
-								public readonly global::{{RestFetchSourceGenerator.RestFetchNamespaceName}}.IHttpClientProxy<{{apiDefinition.THttpClient}}, {{apiDefinition.TResponse}}> Client = client;
-							}
+					// sb.Append($$"""
+					// 		struct ClientWrapper(global::{{RestFetchSourceGenerator.RestFetchNamespaceName}}.IHttpClientProxy<{{apiDefinition.THttpClient}}, {{apiDefinition.TResponse}}> client) {
+					// 			public readonly global::{{RestFetchSourceGenerator.RestFetchNamespaceName}}.IHttpClientProxy<{{apiDefinition.THttpClient}}, {{apiDefinition.TResponse}}> Client = client;
+					// 		}
 
-					""");
+					// """);
 
+					sb.AppendLine($@"public static readonly string CompileTimeBaseAddress = ""{apiDefinition.BaseAddress}"";")
+					.Append('\n');
 					sb.AppendLine(@"public static readonly global::Polly.ResiliencePropertyKey<global::RestFetch.ApiContext> ApiContextKey = new(""RestFetch.ApiContext"");")
 					.Append('\n');
 					sb.AppendLine($"private readonly global::System.Collections.ObjectModel.ReadOnlySet<string> _methodNames = [{string.Join(", ", apiDefinition.Methods.Select(static m => $@"""{m.MethodInfo.Name}"""))}];")
 					.Append('\n');
-					// sb.AppendLine($@"public string BaseAddress = ""{apiDefinition.BaseAddress}"";");
-					sb.AppendLine($@"public readonly global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy<{apiDefinition.THttpClient}, {apiDefinition.TResponse}> Client;")
+					sb.AppendLine($@"public readonly global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxyService<{apiDefinition.TResponse}> Client;")
 					.Append('\n');
 					sb.AppendLine("private readonly bool _ownedClient = true;")
 					.Append('\n');
@@ -341,12 +342,12 @@ public static class Emitter {
 					.AppendLine("\tif (_ownedClient) Client.Dispose();")
 					.AppendLine("}\n");
 
-					sb.AppendLine($"public {typeName}(bool sharedClient, global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy<{apiDefinition.THttpClient}, {apiDefinition.TResponse}> client) {{")
+					sb.AppendLine($"public {typeName}(bool sharedClient, global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxyService<{apiDefinition.TResponse}> client) {{")
 					.AppendLine("\t_ownedClient = !sharedClient;")
 					.AppendLine("\tClient = client;")
 					.AppendLine("}\n");
 
-					sb.AppendLine($"public {typeName}(global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy<{apiDefinition.THttpClient}, {apiDefinition.TResponse}> client): this(true, client) {{}}\n");
+					sb.AppendLine($"public {typeName}(global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxyService<{apiDefinition.TResponse}> client): this(true, client) {{}}\n");
 
 					sb.AppendLine($@"public {typeName}(): this(true, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(""{apiDefinition.BaseAddress}"")) {{}}")
 					.Append('\n');
@@ -357,10 +358,10 @@ public static class Emitter {
 						.AppendLine($@"public static {typeNameFullyQualifiedNameWithGlobal} Create(string baseAddress) => new(true, {apiDefinition.HttpClientProxy.FullyQualifiedNameWithGlobal}.Create(baseAddress));")
 						.AppendLine("")
 						.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
-						.AppendLine($@"public static {typeNameFullyQualifiedNameWithGlobal} Create(global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy<{apiDefinition.THttpClient}, {apiDefinition.TResponse}> client) => new(true, client);")
+						.AppendLine($@"public static {typeNameFullyQualifiedNameWithGlobal} Create(global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxyService<{apiDefinition.TResponse}> client) => new(true, client);")
 						.AppendLine("")
 						.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]")
-						.AppendLine($@"public static {typeNameFullyQualifiedNameWithGlobal} Create(bool sharedClient, global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxy<{apiDefinition.THttpClient}, {apiDefinition.TResponse}> client) => new(sharedClient, client);")
+						.AppendLine($@"public static {typeNameFullyQualifiedNameWithGlobal} Create(bool sharedClient, global::{RestFetchSourceGenerator.RestFetchNamespaceName}.IHttpClientProxyService<{apiDefinition.TResponse}> client) => new(sharedClient, client);")
 						.AppendLine("");
 
 
@@ -408,7 +409,9 @@ public static class Emitter {
 									if (method.IsMethodBaseAddress) {
 										sb.AppendLine($@"__urlBuilder.Append(""{method.BaseAddress}"");");
 									} else {
-										sb.AppendLine("__urlBuilder.Append(Client.BaseAddress);");
+										sb.AppendLine("global::RestFetch.ThrowHelper.ThrowBaseAddressIsNullOrEmpty(Client.BaseAddress ?? CompileTimeBaseAddress);");
+										// sb.AppendLine($@"global::System.Diagnostics.Debug.Assert(!string.IsNullOrEmpty(Client.BaseAddress ?? CompileTimeBaseAddress), ""The BaseAddress is null or empty."");");
+										sb.AppendLine("__urlBuilder.Append(Client.BaseAddress ?? CompileTimeBaseAddress);");
 									}
 
 
@@ -514,10 +517,9 @@ public static class Emitter {
 									global::RestFetch.ApiContext context,
 									global::RestFetch.ResourceManager resourceManager,
 									global::System.Text.Json.Serialization.JsonSerializerContext? jsonContext,
-									ClientWrapper clientWrapper
+									global::RestFetch.IHttpClientProxyService<{{apiDefinition.TResponse}}> client
 									) state) {
-									var (body, __context, __resourceManager, jsonContext, clientWrapper) = state;
-									var client = clientWrapper.Client;
+									var (body, __context, __resourceManager, jsonContext, client) = state;
 
 									{{GenerateRequestBodySerializerString(bodyParam)}}
 									{{GenerateBeforeSendString(method, bodyParam)}}
@@ -546,7 +548,7 @@ public static class Emitter {
 							? "object"
 							: bodyParam.Value.Item1.Type.FullyQualifiedNameWithGlobal.TrimEnd('?')
 							)}}, {{method.RetryOptions?.Predicate ?? "global::RestFetch.DefaultRetryPredicate"}}
-							, {{method.RetryOptions?.OnRetry ?? "global::RestFetch.DefaultOnRetry"}}>(context.MethodName, body, context.HttpMethod).ExecuteAsync(ExecBody, resilienceContext, (body, context, resourceManager, jsonContext, new ClientWrapper(Client)));
+							, {{method.RetryOptions?.OnRetry ?? "global::RestFetch.DefaultOnRetry"}}>(context.MethodName, body, context.HttpMethod).ExecuteAsync(ExecBody, resilienceContext, (body, context, resourceManager, jsonContext, Client));
 							""");
 						});
 						sb.AppendLine("}\n");

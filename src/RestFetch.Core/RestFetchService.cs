@@ -6,29 +6,29 @@ public static class RestFetchService<THttpClient, TResponse>
 	where THttpClient: IDisposable
 	where TResponse: IDisposable {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>() where TAPI: IRestFetchApi<TAPI, THttpClient, TResponse>
-		=> TAPI.Create();
+	public static TApi For<TApi>() where TApi: class, IRestFetchApi<TApi, TResponse>
+		=> TApi.Create();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchApi<TAPI, THttpClient, TResponse>
-		=> TAPI.Create(baseAddress);
+	public static TApi For<TApi>(string baseAddress) where TApi: class, IRestFetchApi<TApi, TResponse>
+		=> TApi.Create(baseAddress);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(IHttpClientProxy<THttpClient, TResponse> httpClientProxy) where TAPI: IRestFetchApi<TAPI, THttpClient, TResponse>
-		=> TAPI.Create(httpClientProxy);
+	public static TApi For<TApi>(IHttpClientProxyService<TResponse> httpClientProxy) where TApi: class, IRestFetchApi<TApi, TResponse>
+		=> TApi.Create(httpClientProxy);
 }
 
 
 public static class RestFetchService {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>() where TAPI: IRestFetchApi<TAPI>
-		=> TAPI.Create();
+	public static TApi For<TApi>() where TApi: class, IRestFetchApi<TApi>
+		=> TApi.Create();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchApi<TAPI>
-		=> TAPI.Create(baseAddress);
+	public static TApi For<TApi>(string baseAddress) where TApi: class, IRestFetchApi<TApi>
+		=> TApi.Create(baseAddress);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(IHttpClientProxy<HttpClient, HttpResponseMessage> httpClientProxy) where TAPI: IRestFetchApi<TAPI>
-		=> TAPI.Create(httpClientProxy);
+	public static TApi For<TApi>(IHttpClientProxyService<HttpResponseMessage> httpClientProxy) where TApi: class, IRestFetchApi<TApi>
+		=> TApi.Create(httpClientProxy);
 }

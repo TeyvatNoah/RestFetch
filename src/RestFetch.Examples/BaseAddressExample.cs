@@ -8,12 +8,12 @@ public sealed partial class C6: IRestFetchApi<C6> {
 	public partial Task<User> GetUserById([Query]int id);
 }
 
-[BaseAddress("https://github.com")]
-public partial struct S6: IRestFetchApi<S6> {
-	[BaseAddress("http://127.0.0.1")]
-	[Get("/user")]
-	public partial Task<User> GetUserById([Query]int id);
-}
+// [BaseAddress("https://github.com")]
+// public partial struct S6: IRestFetchApi<S6> {
+// 	[BaseAddress("http://127.0.0.1")]
+// 	[Get("/user")]
+// 	public partial Task<User> GetUserById([Query]int id);
+// }
 
 [BaseAddress("https://github.com")]
 public partial interface I6: IRestFetchApi<I6.Impl> {

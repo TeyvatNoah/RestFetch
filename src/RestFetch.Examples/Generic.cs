@@ -14,11 +14,11 @@ public sealed partial class Foo {
 			public partial Task<U> GetUserByName<U>([Query]string name) where U: IEnumerable<string>;
 		}
 
-		[BaseAddress("http://127.0.0.1")]
-		public partial struct S4<T>: IRestFetchApi<S4<T>> {
-			[Get("/user")]
-			public partial Task<T> GetUserById([Query]int id);
-		}
+		// [BaseAddress("http://127.0.0.1")]
+		// public partial struct S4<T>: IRestFetchApi<S4<T>> {
+		// 	[Get("/user")]
+		// 	public partial Task<T> GetUserById([Query]int id);
+		// }
 
 		[BaseAddress("http://127.0.0.1")]
 		public partial interface I4<T>: IRestFetchApi<I4<T>.Impl> {

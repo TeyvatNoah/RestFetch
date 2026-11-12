@@ -9,7 +9,7 @@
 		<Title>RestFetch.WebUtilities</Title>
 		<!-- 项目类型,DotnetTool,Dependency -->
 		<PackageType>Dependency</PackageType>
-		<Description>TODO</Description>
+		<Description>RestFetch webUtilities</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageTags>RestFetch;WebUtilities</PackageTags>

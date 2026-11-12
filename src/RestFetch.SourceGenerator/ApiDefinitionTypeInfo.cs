@@ -13,7 +13,7 @@ public sealed record ApiDefinitionTypeInfo(
 	string BaseAddress,
 	string IdGenerator,
 	string TResponse,
-	string THttpClient,
+	// string THttpClient,
 	string THttpClientProxy,
 	string TRequestBodyContent,
 	string? ImplIRestFetchApiFullName,
@@ -57,7 +57,7 @@ public sealed record ApiDefinitionTypeInfo(
 
 	private static readonly DiagnosticDescriptor HookRule3 = new("RestFetch0023",
 		"错误的HttpClientProxy类型",
-		"HttpClientProxy<THttpClientProxy>中THttpClientProxy必须实现IHttpClientProxy<THttpClient, TResponse>",
+		"HttpClientProxy<THttpClientProxy>中THttpClientProxy必须实现IHttpClientProxy<TSelf, TResponse>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule4 = new("RestFetch0024",
@@ -119,9 +119,9 @@ public sealed record ApiDefinitionTypeInfo(
 			FullyQualifiedNameWithGlobal: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxy",
 			ConfigureAwait: false,
 			TypeArguments: new string[] {
-				THttpClientName,
+				// THttpClientName,
+				THttpClientProxyName,
 				TResponseName,
-				// THttpClientProxyName
 			}.ToImmutableArray(),
 			Diagnostics: null
 		);
@@ -137,8 +137,8 @@ public sealed record ApiDefinitionTypeInfo(
 			RetryOptions: retryOptions,
 			TimeoutOptions: timeoutOptions,
 			TResponse: httpClientProxy.TypeArguments?[1] ?? TResponseName,
-			THttpClient: httpClientProxy.TypeArguments?[0] ?? THttpClientName,
-			THttpClientProxy: httpClientProxy.TypeArguments?[1] ?? THttpClientProxyName,
+			// THttpClient: httpClientProxy.TypeArguments?[0] ?? THttpClientName,
+			THttpClientProxy: httpClientProxy.TypeArguments?[0] ?? THttpClientProxyName,
 			TRequestBodyContent: beforeSendHook?.TypeArguments?[0] ?? TRequestBodyContentName,
 			IsValid: false,
 			TypeInfo: typeInfo,

@@ -82,7 +82,9 @@ public static class BodyExample {
 			// TypeInfoResolver = UserContext.Default,
 		};
 
-		using var client = RestFetchService.For<C11>(new HttpClientProxy(new HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions(handler, jsonOptions)) {
+		using var client = RestFetchService.For<C11>(new HttpClientProxy(new HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions(handler) {
+			SerializerOptions = jsonOptions
+		}) {
 			BaseAddress = "http://127.0.0.1"
 		}).Build();
 		var user = await client.CreateUser6(new(new(

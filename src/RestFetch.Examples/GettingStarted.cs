@@ -6,11 +6,11 @@ public sealed partial class C1: IRestFetchApi<C1> {
 	public partial Task<User> GetUserById([Query]int id);
 }
 
-[BaseAddress("http://127.0.0.1")]
-public partial struct S1: IRestFetchApi<S1> {
-	[Get("/user")]
-	public partial Task<User> GetUserById([Query]int id);
-}
+// [BaseAddress("http://127.0.0.1")]
+// public partial struct S1: IRestFetchApi<S1> {
+// 	[Get("/user")]
+// 	public partial Task<User> GetUserById([Query]int id);
+// }
 
 [BaseAddress("http://127.0.0.1")]
 public partial interface I1: IRestFetchApi<I1.Impl> {

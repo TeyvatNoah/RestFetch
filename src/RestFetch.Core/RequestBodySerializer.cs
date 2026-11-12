@@ -58,7 +58,7 @@ public sealed class RequestBodySerializer {
 			CancellationToken cancellationToken) {
 			if (jsonContext is not null) {
 				var jsonSerializerOptions = new JsonSerializerOptions(context.Options switch {
-					HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+					HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.SerializerOptions,
 					HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
 					_ => null
 				} ?? _fastPathOptions) {
@@ -76,7 +76,7 @@ public sealed class RequestBodySerializer {
 			}
 			return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, new("application/json"),
 					(context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.SerializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
 						_ => null
 					}) ?? _options));
@@ -95,7 +95,7 @@ public sealed class RequestBodySerializer {
 			CancellationToken cancellationToken) {
 			if (jsonContext is not null) {
 				var jsonSerializerOptions = new JsonSerializerOptions((context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.SerializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
 						_ => null
 					}) ?? _fastPathOptions) {
@@ -117,7 +117,7 @@ public sealed class RequestBodySerializer {
 			}
 
 			return ValueTask.FromResult<HttpContent>(new ReadOnlyMemoryContent(value?.Create((context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.SerializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
 						_ => null
 					}) ?? _options) ?? Encoding.UTF8.GetBytes("null")) {
@@ -149,7 +149,7 @@ public sealed class RequestBodySerializer {
 			} else {
 				if (jsonContext is not null) {
 					var jsonSerializerOptions = new JsonSerializerOptions((context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.SerializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
 						_ => null
 					}) ?? _fastPathOptions) {
@@ -159,7 +159,7 @@ public sealed class RequestBodySerializer {
 						bytes = JsonSerializer.SerializeToUtf8Bytes(value, jsonTypeInfo);
 					} else {
 						bytes = JsonSerializer.SerializeToUtf8Bytes(value, (context.Options switch {
-							HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+							HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.SerializerOptions,
 							HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
 							_ => null
 						}) ?? _options);
@@ -173,7 +173,7 @@ public sealed class RequestBodySerializer {
 					// }
 				} else {
 					bytes = JsonSerializer.SerializeToUtf8Bytes(value, (context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.SerializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
 						_ => null
 					}) ?? _options);

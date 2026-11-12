@@ -89,7 +89,7 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? SseEventResultT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.SseEventResult`1");
 	public readonly INamedTypeSymbol? SseItemT = compilation.GetTypeByMetadataName("System.Net.ServerSentEvents.SseItem`1");
 	public readonly INamedTypeSymbol? ApiResponseT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ApiResponse`1");
-	public readonly INamedTypeSymbol? IRestFetchApiT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRestFetchApi`3");
+	public readonly INamedTypeSymbol? IRestFetchApiT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRestFetchApi`2");
 	public readonly INamedTypeSymbol? IRestFetchApi = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRestFetchApi`1");
 	public readonly INamedTypeSymbol? JsonBodyT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.JsonBody`1");
 	public readonly INamedTypeSymbol? RetryPredicate = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRetryPredicate`1");

@@ -1,18 +1,18 @@
 namespace RestFetch.Examples;
 
 [HttpClientProxy<HttpClientProxyDemo>]
-public sealed partial class C12: IRestFetchApi<C12, HttpClient, HttpResponseMessage> {
+public sealed partial class C12: IRestFetchApi<C12, HttpResponseMessage> {
 	[Get("/user")]
 	public partial Task GetUserById([Query]int id);
 
 }
 
-public sealed class HttpClientProxyDemo(string baseAddress) : IHttpClientProxy<HttpClient, HttpResponseMessage> {
-	public string BaseAddress { get; set; } = baseAddress;
+public sealed class HttpClientProxyDemo(string? baseAddress) : IHttpClientProxy<HttpClientProxyDemo, HttpResponseMessage> {
+	public string? BaseAddress { get; set; } = baseAddress;
 	public object? Options { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
 
-	public static IHttpClientProxy<HttpClient, HttpResponseMessage> Create(string baseAddress) => new HttpClientProxyDemo(baseAddress);
-	public static IHttpClientProxy<HttpClient, HttpResponseMessage> Create(HttpClient client) => new HttpClientProxyDemo("");
+	public static HttpClientProxyDemo Create(string? baseAddress) => new HttpClientProxyDemo(baseAddress);
+	public static HttpClientProxyDemo Create(HttpClient client) => new HttpClientProxyDemo("");
 		// static IHttpClientProxy<HttpClient, HttpResponseMessage> IHttpClientProxy<HttpClient, HttpResponseMessage>.Create(string baseAddress) => this.Create(baseAddress);
 		// static IHttpClientProxy<HttpClient, HttpResponseMessage> IHttpClientProxy<HttpClient, HttpResponseMessage>.Create(HttpClient client) => this.Create(client);
 

@@ -10,11 +10,11 @@ public sealed partial class Foo {
 			public partial Task<T> GetUserById([Query]int id);
 		}
 
-		[BaseAddress("http://127.0.0.1")]
-		public partial struct S5<T, U>: IRestFetchApi<S5<T, U>> where T: IEnumerable<U> {
-			[Get("/user")]
-			public partial Task<T> GetUserById([Query]int id);
-		}
+		// [BaseAddress("http://127.0.0.1")]
+		// public partial struct S5<T, U>: IRestFetchApi<S5<T, U>> where T: IEnumerable<U> {
+		// 	[Get("/user")]
+		// 	public partial Task<T> GetUserById([Query]int id);
+		// }
 
 		[BaseAddress("http://127.0.0.1")]
 		public partial interface I5<T, U>: IRestFetchApi<I5<T, U>.Impl> where T: IEnumerable<U> {

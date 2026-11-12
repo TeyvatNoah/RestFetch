@@ -90,7 +90,7 @@ public sealed class ResponseBodyDeserializer {
 
 			if (jsonContext is not null) {
 				var jsonSerializerOptions = new JsonSerializerOptions((context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.DeserializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.DeserializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.DeserializerOptions,
 						_ => null
 					}) ?? _fastPathOptions) {
@@ -107,7 +107,7 @@ public sealed class ResponseBodyDeserializer {
 			}
 
 			return resp.Content.ReadFromJsonAsync<TResponseBody>((context.Options switch {
-					HttpClientProxyOptions.HttpClientProxyClientOptions o => o.DeserializerOptions,
+					HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.DeserializerOptions,
 					HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.DeserializerOptions,
 					_ => null
 				}) ?? _options, cancellationToken);
@@ -213,7 +213,7 @@ public sealed class ResponseBodyDeserializer {
 
 
 					return ParseAsJson(resp, url, jsonContext, context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.DeserializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.DeserializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.DeserializerOptions,
 						_ => null
 					}, cancellationToken);
@@ -328,14 +328,14 @@ public sealed class ResponseBodyDeserializer {
 #pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
 					} else {
 						return ParseAsJson<T, TSseEventOnError>(resp, jsonContext, context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.DeserializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.DeserializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.DeserializerOptions,
 						_ => null
 					}, context, cancellationToken);
 					}
 				} else if (string.Equals(resp.Content.Headers.ContentType?.MediaType, "application/json", StringComparison.OrdinalIgnoreCase)) {
 					return ParseAsJsonArray(resp, jsonContext, context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.DeserializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.DeserializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.DeserializerOptions,
 						_ => null
 					}, cancellationToken);
@@ -935,7 +935,7 @@ public sealed class ResponseBodyDeserializer {
 					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJsonDocument<TSseEventOnError>(resp, context, cancellationToken);
 				} else {
 					return (IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent<T>>>)(object)ParseAsJson<TSseEventOnError>(resp, jsonContext, (context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.DeserializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.DeserializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.DeserializerOptions,
 						_ => null
 					}), context, cancellationToken);
@@ -1247,7 +1247,7 @@ public sealed class ResponseBodyDeserializer {
 						TypeInfoResolver = jsonContext
 					};
 					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJson<TSseEventOnError>(resp, jsonContext, (context.Options switch {
-						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.DeserializerOptions,
+						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.DeserializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.DeserializerOptions,
 						_ => null
 					}), context, cancellationToken);

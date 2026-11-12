@@ -10,11 +10,11 @@ public sealed partial class C2: IRestFetchApi<C2> {
 	public partial Task<User> GetUserById([Query]int id);
 }
 
-[BaseAddress("http://127.0.0.1")]
-public partial struct S2: IRestFetchApi<S2> {
-	[Get("/user")]
-	public partial Task<User> GetUserById([Query]int id);
-}
+// [BaseAddress("http://127.0.0.1")]
+// public partial struct S2: IRestFetchApi<S2> {
+// 	[Get("/user")]
+// 	public partial Task<User> GetUserById([Query]int id);
+// }
 
 [BaseAddress("http://127.0.0.1")]
 public partial interface I2: IRestFetchApi<I2.Impl> {

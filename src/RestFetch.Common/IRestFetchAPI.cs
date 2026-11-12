@@ -4,15 +4,9 @@ using Polly.Timeout;
 
 namespace RestFetch;
 
-public interface IRestFetchApi<out TSelf, THttpClient, TResponse>
-	where TSelf: notnull
-	where THttpClient: IDisposable
+public interface IRestFetchApiService<out TSelf, TResponse>
+	where TSelf: class, IRestFetchApiService<TSelf, TResponse>
 	where TResponse: IDisposable {
-	static abstract TSelf Create();
-	static abstract TSelf Create(string baseAddress);
-	static abstract TSelf Create(IHttpClientProxy<THttpClient, TResponse> client);
-	static abstract TSelf Create(bool sharedClient, IHttpClientProxy<THttpClient, TResponse> client);
-
 	TSelf AddRetry(RetryOptions<TResponse>? options);
 
 	TSelf AddRetry(RetryStrategyOptions<TResponse>? options);
@@ -39,4 +33,16 @@ public interface IRestFetchApi<out TSelf, THttpClient, TResponse>
 	TSelf Build();
 }
 
-public interface IRestFetchApi<TSelf>: IRestFetchApi<TSelf, HttpClient, HttpResponseMessage> where TSelf: notnull;
+public interface IRestFetchApiService<TSelf>: IRestFetchApiService<TSelf, HttpResponseMessage> where TSelf: class, IRestFetchApiService<TSelf>;
+
+public interface IRestFetchApi<out TSelf, TResponse>: IRestFetchApiService<TSelf, TResponse>
+	where TSelf: class, IRestFetchApi<TSelf, TResponse>
+	where TResponse: IDisposable {
+	static abstract TSelf Create();
+	static abstract TSelf Create(string baseAddress);
+	static abstract TSelf Create(IHttpClientProxyService<TResponse> client);
+	static abstract TSelf Create(bool sharedClient, IHttpClientProxyService<TResponse> client);
+
+}
+
+public interface IRestFetchApi<TSelf>: IRestFetchApi<TSelf, HttpResponseMessage> where TSelf: class, IRestFetchApi<TSelf>;
