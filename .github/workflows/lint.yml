@@ -60,20 +60,20 @@ jobs:
 
       - name: Build WebUtilities
         if: steps.changes.outputs.WebUtilities == 'true'
-        run: ./build.sh -z 1 -c src/WebUtilities/WebUtilities.csproj
+        run: ./build.sh -z 1 -c src/RestFetch.WebUtilities/RestFetch.WebUtilities.csproj
 
       - name: Build Common
         if: steps.changes.outputs.Common == 'true'
-        run: ./build.sh -z 1 -c src/Common/Common.csproj
+        run: ./build.sh -z 1 -c src/RestFetch.Common/RestFetch.Common.csproj
 
       - name: Build SourceGenerator
         if: steps.changes.outputs.SourceGenerator == 'true'
-        run: ./build.sh -z 1 -c src/SourceGenerator/SourceGenerator.csproj
+        run: ./build.sh -z 1 -c src/RestFetch.SourceGenerator/RestFetch.SourceGenerator.csproj
 
       - name: Build Extensions
         if: steps.changes.outputs.Extensions == 'true'
-        run: ./build.sh -z 1 -c src/Extensions/Extensions.csproj
+        run: ./build.sh -z 1 -c src/RestFetch.Extensions/RestFetch.Extensions.csproj
 
       - name: Build Core
         if: steps.changes.outputs.Core == 'true'
-        run: ./build.sh -z 1 -c src/Core/Core.csproj
+        run: ./build.sh -z 1 -c src/RestFetch.Core/RestFetch.Core.csproj
