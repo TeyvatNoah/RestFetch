@@ -5,7 +5,7 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- 包信息 -->
 		<PackageId>RestFetch.SourceGenerator</PackageId>
-		<Version>0.2.9</Version>
+		<Version>0.2.10</Version>
 		<!-- <PackageIcon>TODO</PackageIcon> -->
 		<Title>RestFetch.SourceGenerator</Title>
 		<!-- 项目类型,DotnetTool,Dependency -->
