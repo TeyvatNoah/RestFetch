@@ -40,6 +40,12 @@ jobs:
         id: vars
         run: echo "prev_sha=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
 
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       # - name: Run lint
       #   run: TODO
       - name: Filter Path
@@ -69,7 +75,7 @@ jobs:
 
       - name: Publish WebUtilities
         if: steps.changes.outputs.WebUtilities == 'true'
-        run: dotnet nuget push src/RestFetch.WebUtilities/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push src/RestFetch.WebUtilities/bin/Release/*.nupkg -k ${{steps.login.outputs.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json
 
       - name: Build Common
         if: steps.changes.outputs.Common == 'true'
@@ -81,7 +87,7 @@ jobs:
 
       - name: Publish Common
         if: steps.changes.outputs.Common == 'true'
-        run: dotnet nuget push src/RestFetch.Common/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push src/RestFetch.Common/bin/Release/*.nupkg -k ${{steps.login.outputs.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json
 
       - name: Build SourceGenerator
         if: steps.changes.outputs.SourceGenerator == 'true'
@@ -93,7 +99,7 @@ jobs:
 
       - name: Publish SourceGenerator
         if: steps.changes.outputs.SourceGenerator == 'true'
-        run: dotnet nuget push src/RestFetch.SourceGenerator/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push src/RestFetch.SourceGenerator/bin/Release/*.nupkg -k ${{steps.login.outputs.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json
 
       - name: Build Extensions
         if: steps.changes.outputs.Extensions == 'true'
@@ -105,7 +111,7 @@ jobs:
 
       - name: Publish Extensions
         if: steps.changes.outputs.Extensions == 'true'
-        run: dotnet nuget push src/RestFetch.Extensions/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push src/RestFetch.Extensions/bin/Release/*.nupkg -k ${{steps.login.outputs.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json
 
       - name: Build Core
         if: steps.changes.outputs.Core == 'true'
@@ -117,7 +123,7 @@ jobs:
 
       - name: Publish Core
         if: steps.changes.outputs.Core == 'true'
-        run: dotnet nuget push src/RestFetch.Core/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push src/RestFetch.Core/bin/Release/*.nupkg -k ${{steps.login.outputs.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json
 
   # release:
   #   runs-on: windows-latest
