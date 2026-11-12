@@ -161,7 +161,6 @@ public sealed record TypeInfo(
 				IsPartial: typeSymbol.IsPartial(),
 				IsInterface: typeSymbol.TypeKind == TypeKind.Interface,
 				Location: typeSymbol.Locations.IsEmpty ? null : new(typeSymbol.Locations[0]),
-				// TODO
 				Diagnostics: null
 			);
 		} else {
@@ -218,7 +217,6 @@ public sealed record TypeInfo(
 				IsPartial: typeSymbol.IsPartial(),
 				IsInterface: typeSymbol.TypeKind == TypeKind.Interface,
 				Location: typeSymbol.Locations.IsEmpty ? null : new(typeSymbol.Locations[0]),
-				// TODO
 				Diagnostics: null
 			);
 		} else {
@@ -272,7 +270,6 @@ public sealed record TypeInfo(
 				IsPartial: typeSymbol.IsPartial(),
 				IsInterface: typeSymbol.TypeKind == TypeKind.Interface,
 				Location: typeSymbol.Locations.IsEmpty ? null : new(typeSymbol.Locations[0]),
-				// TODO
 				Diagnostics: null
 			);
 		} else if (symbol is IArrayTypeSymbol arraySymbol) {
@@ -319,7 +316,6 @@ public sealed record TypeInfo(
 				IsPartial: false,
 				IsInterface: arraySymbol.TypeKind == TypeKind.Interface,
 				Location: arraySymbol.Locations.IsEmpty ? null : new(arraySymbol.Locations[0]),
-				// TODO
 				Diagnostics: null
 			);
 		} else if (symbol is ITypeParameterSymbol typeParamSymbol) {
@@ -366,7 +362,6 @@ public sealed record TypeInfo(
 				IsPartial: false,
 				IsInterface: typeParamSymbol.TypeKind == TypeKind.Interface,
 				Location: typeParamSymbol.Locations.IsEmpty ? null : new(typeParamSymbol.Locations[0]),
-				// TODO
 				Diagnostics: null
 			);
 		} else {
@@ -413,7 +408,6 @@ public sealed record TypeInfo(
 				IsPartial: false,
 				IsInterface: symbol.TypeKind == TypeKind.Interface,
 				Location: symbol.Locations.IsEmpty ? null : new(symbol.Locations[0]),
-				// TODO
 				Diagnostics: null
 			);
 		}

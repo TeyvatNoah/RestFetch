@@ -13,8 +13,12 @@ public sealed record ApiDefinitionTypeInfo(
 	string BaseAddress,
 	string IdGenerator,
 	string TResponse,
+	string THttpClient,
 	string THttpClientProxy,
 	string TRequestBodyContent,
+	string? ImplIRestFetchApiFullName,
+	RetryOptions? RetryOptions,
+	TimeoutOptions? TimeoutOptions,
 	HookInfo? BeforeSendHook,
 	HookInfo? AfterResponseHook,
 	HookInfo? OnError,
@@ -27,6 +31,7 @@ public sealed record ApiDefinitionTypeInfo(
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
 	private const string TResponseName = "global::System.Net.Http.HttpResponseMessage";
+	private const string THttpClientName = "global::System.Net.Http.HttpClient";
 	private const string THttpClientProxyName = "global::RestFetch.HttpClientProxy";
 	private const string TRequestBodyContentName = "global::System.Net.Http.HttpResponseMessage";
 
@@ -52,7 +57,7 @@ public sealed record ApiDefinitionTypeInfo(
 
 	private static readonly DiagnosticDescriptor HookRule3 = new("RestFetch0023",
 		"错误的HttpClientProxy类型",
-		"HttpClientProxy<THttpClientProxy>中THttpClientProxy必须实现IHttpClientProxy<TResponse, THttpClientProxy>",
+		"HttpClientProxy<THttpClientProxy>中THttpClientProxy必须实现IHttpClientProxy<THttpClient, TResponse>",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule4 = new("RestFetch0024",
@@ -70,6 +75,16 @@ public sealed record ApiDefinitionTypeInfo(
 		"OnSseEventError<THook>中THook必须实现IOnSseEventError",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
+	public static readonly DiagnosticDescriptor HookRule8 = new("RestFetch0028",
+		"错误的Retry Predicate类型",
+		"{0}必须实现IRetryPredicate或IRetryPredicate<TResponse>",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
+
+	public static readonly DiagnosticDescriptor HookRule9 = new("RestFetch0029",
+		"错误的Retry OnRetry类型",
+		"{0}必须实现IOnRetry或IOnRetry<TResponse>",
+		"SourceGenerator", DiagnosticSeverity.Error, true);
+
 	public static ApiDefinitionTypeInfo CreateFromSymbol(ITypeSymbol symbol, KnownTypes knownTypes) {
 		var typeInfo = TypeInfo.CreateFromSymbol(symbol, knownTypes, 1);
 		var attrList = symbol.GetAttributes();
@@ -77,8 +92,12 @@ public sealed record ApiDefinitionTypeInfo(
 		var staticHeaders = GetStaticHeaders(attrList, knownTypes).ToArray();
 		var validStaticHeaders = staticHeaders
 			.Where(static header => header.Diagnostics is null)
+			.Distinct(HeaderEqualityComparer.Default)
 			.GroupBy(static header => header.Key, StringComparer.OrdinalIgnoreCase)
-			.Select(static g => g.LastOrDefault());
+			.Where(static headers => !headers.Any(static h => h.Value is null))
+			.SelectMany(static headers => headers);
+
+
 			// 去重相同的header,但是允许方法级的覆盖类级
 			// .Distinct(HeaderEqualityComparer.Default);
 		var headerErrors = staticHeaders
@@ -100,8 +119,9 @@ public sealed record ApiDefinitionTypeInfo(
 			FullyQualifiedNameWithGlobal: $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.HttpClientProxy",
 			ConfigureAwait: false,
 			TypeArguments: new string[] {
+				THttpClientName,
 				TResponseName,
-				THttpClientProxyName
+				// THttpClientProxyName
 			}.ToImmutableArray(),
 			Diagnostics: null
 		);
@@ -109,8 +129,15 @@ public sealed record ApiDefinitionTypeInfo(
 		var onSuccess = GetOnSuccess(attrList, knownTypes);
 		var onSseEventError = GetOnSseEventError(attrList, knownTypes);
 
+		var retryOptions = GetRetryOptions(attrList, knownTypes);
+		var timeoutOptions = GetTimeoutOptions(attrList, knownTypes);
+
 		var tempApiDefinition = new ApiDefinitionTypeInfo(
-			TResponse: httpClientProxy.TypeArguments?[0] ?? TResponseName,
+			ImplIRestFetchApiFullName: GetIRestFetchApiInterfaceFullName(symbol, knownTypes),
+			RetryOptions: retryOptions,
+			TimeoutOptions: timeoutOptions,
+			TResponse: httpClientProxy.TypeArguments?[1] ?? TResponseName,
+			THttpClient: httpClientProxy.TypeArguments?[0] ?? THttpClientName,
 			THttpClientProxy: httpClientProxy.TypeArguments?[1] ?? THttpClientProxyName,
 			TRequestBodyContent: beforeSendHook?.TypeArguments?[0] ?? TRequestBodyContentName,
 			IsValid: false,
@@ -134,7 +161,8 @@ public sealed record ApiDefinitionTypeInfo(
 				httpClientProxy.Diagnostics,
 				onError?.Diagnostics,
 				onSseEventError?.Diagnostics,
-				onSuccess?.Diagnostics
+				onSuccess?.Diagnostics,
+				retryOptions?.Diagnostics
 			)
 		);
 		var methods = symbol.GetInstanceMethods().Select(item => ApiDefinitionMethodInfo.CreateFromSymbol(item, knownTypes, tempApiDefinition)).ToArray();
@@ -146,6 +174,18 @@ public sealed record ApiDefinitionTypeInfo(
 				.SelectMany(static m => m.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArray()))
 				.ToImmutableArray()
 		};
+	}
+
+	public static string? GetIRestFetchApiInterfaceFullName(ITypeSymbol symbol, KnownTypes knownTypes) {
+		var iRestFetchT = symbol.GetInterface(knownTypes.IRestFetchApiT);
+		var iRestFetch = symbol.GetInterface(knownTypes.IRestFetchApi);
+		if (iRestFetch is not null) {
+			return iRestFetch.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+		} else if (iRestFetchT is not null) {
+			return iRestFetchT.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+		} else {
+			return null;
+		}
 	}
 
 
@@ -176,6 +216,120 @@ public sealed record ApiDefinitionTypeInfo(
 					Diagnostics: errLocation is null ? [] : (ImmutableArray<DiagnosticInfo>)[new(HeaderRule0, new(errLocation), null)]
 				);
 			}
+		}
+	}
+
+	public static RetryOptions? GetRetryOptions(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var retryAttrs = attrs.GetAttributesBySymbol(knownTypes.RetryAttribute).ToArray();
+
+		if (retryAttrs is [var retryAttr, ..]) {
+			int? maxRetryAttempts = default;
+			DelayBackoffType? backoffType = default;
+			int? delay = default;
+			int? maxDelay = default;
+			bool? useJitter = default;
+			bool ignore = false;
+			bool allowUnsafeHttpMethod = false;
+			bool allowUnsafeRequestBody = false;
+			string retryPredicateFullyQualifiedNameWithGlobal = "global::RestFetch.DefaultRetryPredicate";
+			string onRetryFullyQualifiedNameWithGlobal = "global::RestFetch.DefaultOnRetry";
+
+			if (retryAttr.ConstructorArguments.Length == 0 && retryAttr.NamedArguments.Length == 0) {
+				return null;
+			}
+
+			if (retryAttr.ConstructorArguments is [var retryAttempts, ..]) {
+				maxRetryAttempts = (int?)retryAttempts.Value;
+			}
+
+			foreach (var item in retryAttr.NamedArguments) {
+				if (item.Key == "MaxRetryAttempts") {
+					maxRetryAttempts = (int?)item.Value.Value;
+				} else if (item.Key == "AllowUnsafeHttpMethod") {
+					allowUnsafeHttpMethod = (bool)(item.Value.Value ?? false);
+				} else if (item.Key == "AllowUnsafeRequestBody") {
+					allowUnsafeRequestBody = (bool)(item.Value.Value ?? false);
+				} else if (item.Key == "BackoffType") {
+					backoffType = (DelayBackoffType?)item.Value.Value;
+				} else if (item.Key == "Delay") {
+					delay = (int?)item.Value.Value;
+				} else if (item.Key == "MaxDelay") {
+					maxDelay = (int?)item.Value.Value;
+				} else if (item.Key == "UseJitter") {
+					useJitter = (bool?)item.Value.Value;
+				} else if (item.Key == "Ignore") {
+					ignore = (bool)item.Value.Value!;
+				} else if (item.Key == "Predicate") {
+					if (item.Value.Value is INamedTypeSymbol predicateType && predicateType.ImplementsInterface(knownTypes.RetryPredicate)) {
+						retryPredicateFullyQualifiedNameWithGlobal = predicateType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+					} else {
+						return new(
+							Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule8, new(retryAttr.GetNamedArgumentLocation("Predicate")),
+								(ImmutableArray<string>)[item.Value.Value is ITypeSymbol contextType ? contextType.Name : "Predicate"])]
+						);
+					}
+				} else if (item.Key == "OnRetry") {
+					if (item.Value.Value is INamedTypeSymbol onRetryType && onRetryType.ImplementsInterface(knownTypes.OnRetry)) {
+						onRetryFullyQualifiedNameWithGlobal = onRetryType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
+					} else {
+						return new(
+							Diagnostics: (ImmutableArray<DiagnosticInfo>)[new(HookRule9, new(retryAttr.GetNamedArgumentLocation("OnRetry")),
+								(ImmutableArray<string>)[item.Value.Value is ITypeSymbol contextType ? contextType.Name : "OnRetry"])]
+						);
+					}
+				}
+			}
+
+			return new(
+				MaxRetryAttempts: maxRetryAttempts,
+				AllowUnsafeHttpMethod: allowUnsafeHttpMethod,
+				AllowUnsafeRequestBody: allowUnsafeRequestBody,
+				BackoffType: backoffType,
+				Delay: delay,
+				MaxDelay: maxDelay,
+				UseJitter: useJitter,
+				Ignore: ignore,
+				Predicate: retryPredicateFullyQualifiedNameWithGlobal,
+				OnRetry: onRetryFullyQualifiedNameWithGlobal
+			);
+		} else {
+			return null;
+		}
+	}
+
+	public static TimeoutOptions? GetTimeoutOptions(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
+		var timeoutAttrs = attrs.GetAttributesBySymbol(knownTypes.TimeoutAttribute).ToArray();
+
+		if (timeoutAttrs is [var timeoutAttr, ..]) {
+			int? attemptTimeout = default;
+			int? totalTimeout = default;
+			bool ignore = false;
+
+			if (timeoutAttr.ConstructorArguments.Length == 0 && timeoutAttr.NamedArguments.Length == 0) {
+				return null;
+			}
+
+			if (timeoutAttr.ConstructorArguments is [var total, ..]) {
+				totalTimeout = (int?)total.Value;
+			}
+
+			foreach (var item in timeoutAttr.NamedArguments) {
+				if (item.Key == "AttemptTimeout") {
+					attemptTimeout = (int?)item.Value.Value;
+				} else if (item.Key == "TotalTimeout") {
+					totalTimeout = (int?)item.Value.Value;
+				} else if (item.Key == "Ignore") {
+					ignore = (bool)item.Value.Value!;
+				}
+			}
+
+			return new(
+				AttemptTimeout: attemptTimeout,
+				TotalTimeout: totalTimeout,
+				Ignore: ignore
+			);
+		} else {
+			return null;
 		}
 	}
 

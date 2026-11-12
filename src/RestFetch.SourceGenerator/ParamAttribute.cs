@@ -17,7 +17,6 @@ internal class ParamAttribute<TSerializer>: Attribute {
 	public readonly string? Alias;
 	public bool UrlEncode { get; init; } = true;
 
-	// TODO 如果有默认泛型参数就考虑用泛型
 	public readonly Type Serializer = typeof(TSerializer);
 
 	public ParamAttribute() {}

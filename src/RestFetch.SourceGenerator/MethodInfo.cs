@@ -89,7 +89,6 @@ public sealed record MethodInfo(
 			TypeArguments: symbol.TypeArguments.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArray(),
 			TypeParameters: symbol.TypeParameters.Select(e => TypeInfo.CreateFromSymbolWithoutMethods(e, knownTypes)).ToImmutableArray(),
 			Location: symbol.Locations.IsEmpty ? null : new(symbol.Locations[0]),
-			// TODO
 			Diagnostics: null
 		);
 	}

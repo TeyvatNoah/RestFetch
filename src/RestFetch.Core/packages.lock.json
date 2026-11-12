@@ -15,7 +15,10 @@
         "contentHash": "XE8a+11nZg0LRaf+RGABEWaHIf8yGd5w8v/Ra1iWxMBmAVzwuKbW7G21mS0U7w7sh1lYcgckInWGgnz4qyET8A=="
       },
       "restfetch.common": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Polly.Core": "[8.9.0, )"
+        }
       },
       "restfetch.sourcegenerator": {
         "type": "Project"
@@ -25,6 +28,12 @@
         "dependencies": {
           "ZString": "[2.6.0, )"
         }
+      },
+      "Polly.Core": {
+        "type": "CentralTransitive",
+        "requested": "[8.9.0, )",
+        "resolved": "8.9.0",
+        "contentHash": "Imm3q+XvH+8fiOdCkp+GggDQuxN3e4VznbRxODjjJxCurmAIfUEO4dKcPx8RCwocTkvP6Udw2DyXtC+45tu3jA=="
       }
     }
   }

@@ -15,20 +15,13 @@ namespace RestFetch;
 	Inherited = true,
 	AllowMultiple = false
 	)]
-// TODO T 约束必须实现接口IQueryStringSerializer<U>
-// 但是IQueryStringSerializer接口是泛型,还需要一个泛型参数U
-// 以确保T可以序列化U类型的数据
-// 但是此类型作为Attr,使用时其实可以知道目标类型U
-// 增加一个泛型参数又显得有点多余,故不对T做泛型约束
-// 交给源生成器做约束
 internal class QueryAttribute<TSerializer>: Attribute {
 	// 作用在类型上时此字段忽略
 	public readonly string? Alias;
 
 	// 作用在类型上时此字段有效,源生成器应当根据此字段决定调用的接口是否带key
-	public bool AutoAlias { get; init; } = true;
+	public bool ValueOnly { get; init; } = false;
 
-	// TODO 如果有默认泛型参数就考虑用泛型
 	public readonly Type Serializer = typeof(TSerializer);
 
 	public QueryAttribute() {}

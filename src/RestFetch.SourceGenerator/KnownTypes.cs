@@ -59,12 +59,15 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? SystemString = compilation.GetSpecialType(SpecialType.System_String);
 	public readonly INamedTypeSymbol? BodyAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.BodyAttribute");
 	public readonly INamedTypeSymbol? BodyAttributeT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.BodyAttribute`1");
+	public readonly INamedTypeSymbol? RetryAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.RetryAttribute");
+	public readonly INamedTypeSymbol? TimeoutAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.TimeoutAttribute");
 	public readonly INamedTypeSymbol? ParamAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ParamAttribute");
 	public readonly INamedTypeSymbol? ParamAttributeT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ParamAttribute`1");
 	public readonly INamedTypeSymbol? QueryAttribute = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.QueryAttribute");
 	public readonly INamedTypeSymbol? QueryAttributeT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.QueryAttribute`1");
 	public readonly INamedTypeSymbol? JsonSerializerContext = compilation.GetTypeByMetadataName("System.Text.Json.Serialization.JsonSerializerContext");
 	public readonly INamedTypeSymbol? Stream = compilation.GetTypeByMetadataName("System.IO.Stream");
+	public readonly INamedTypeSymbol? StreamFactoryT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IStreamFactory");
 	public readonly INamedTypeSymbol? IObservable = compilation.GetTypeByMetadataName("System.IObservable`1");
 	public readonly INamedTypeSymbol? HttpContent = compilation.GetTypeByMetadataName("System.Net.Http.HttpContent");
 	public readonly IArrayTypeSymbol? ByteArray = compilation.CreateArrayTypeSymbol(compilation.GetTypeByMetadataName("System.Byte")!);
@@ -86,6 +89,11 @@ public sealed class KnownTypes(Compilation compilation)
 	public readonly INamedTypeSymbol? SseEventResultT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.SseEventResult`1");
 	public readonly INamedTypeSymbol? SseItemT = compilation.GetTypeByMetadataName("System.Net.ServerSentEvents.SseItem`1");
 	public readonly INamedTypeSymbol? ApiResponseT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.ApiResponse`1");
+	public readonly INamedTypeSymbol? IRestFetchApiT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRestFetchApi`3");
+	public readonly INamedTypeSymbol? IRestFetchApi = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRestFetchApi`1");
+	public readonly INamedTypeSymbol? JsonBodyT = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.JsonBody`1");
+	public readonly INamedTypeSymbol? RetryPredicate = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IRetryPredicate`1");
+	public readonly INamedTypeSymbol? OnRetry = compilation.GetTypeByMetadataName($"{RestFetchSourceGenerator.RestFetchNamespaceName}.IOnRetry`1");
 
 	public override bool Equals(object? obj) => obj is not null && obj is KnownTypes types && Equals(types);
 
@@ -142,6 +150,8 @@ public sealed class KnownTypes(Compilation compilation)
 		SystemString,
 		BodyAttribute,
 		BodyAttributeT,
+		RetryAttribute,
+		TimeoutAttribute,
 		ParamAttribute,
 		ParamAttributeT,
 		QueryAttribute,
@@ -163,7 +173,13 @@ public sealed class KnownTypes(Compilation compilation)
 		SseEventT,
 		SseEventResultT,
 		SseItemT,
-		ApiResponseT
+		ApiResponseT,
+		IRestFetchApi,
+		IRestFetchApiT,
+		StreamFactoryT,
+		JsonBodyT,
+		RetryPredicate,
+		OnRetry
 	).GetHashCode();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -217,6 +233,8 @@ public sealed class KnownTypes(Compilation compilation)
 		&& Comparer.Equals(left.SystemString, right.SystemString)
 		&& Comparer.Equals(left.BodyAttribute, right.BodyAttribute)
 		&& Comparer.Equals(left.BodyAttributeT, right.BodyAttributeT)
+		&& Comparer.Equals(left.RetryAttribute, right.RetryAttribute)
+		&& Comparer.Equals(left.TimeoutAttribute, right.TimeoutAttribute)
 		&& Comparer.Equals(left.ParamAttribute, right.ParamAttribute)
 		&& Comparer.Equals(left.ParamAttributeT, right.ParamAttributeT)
 		&& Comparer.Equals(left.QueryAttribute, right.QueryAttribute)
@@ -238,7 +256,13 @@ public sealed class KnownTypes(Compilation compilation)
 		&& Comparer.Equals(left.SseEventT, right.SseEventT)
 		&& Comparer.Equals(left.SseEventResultT, right.SseEventResultT)
 		&& Comparer.Equals(left.SseItemT, right.SseItemT)
-		&& Comparer.Equals(left.ApiResponseT, right.ApiResponseT);
+		&& Comparer.Equals(left.IRestFetchApi, right.IRestFetchApi)
+		&& Comparer.Equals(left.IRestFetchApiT, right.IRestFetchApiT)
+		&& Comparer.Equals(left.ApiResponseT, right.ApiResponseT)
+		&& Comparer.Equals(left.StreamFactoryT, right.StreamFactoryT)
+		&& Comparer.Equals(left.JsonBodyT, right.JsonBodyT)
+		&& Comparer.Equals(left.RetryPredicate, right.RetryPredicate)
+		&& Comparer.Equals(left.OnRetry, right.OnRetry);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool operator !=(KnownTypes left, KnownTypes right) => !(left == right);

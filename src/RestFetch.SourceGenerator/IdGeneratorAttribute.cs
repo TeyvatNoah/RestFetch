@@ -18,7 +18,6 @@ namespace RestFetch;
 	)]
 internal class IdGeneratorAttribute<TGenerator>: Attribute
  where TGenerator: IRequestIdGenerator {
-	// TODO 如果有默认泛型参数就考虑用泛型
 	public readonly Type Generator = typeof(TGenerator);
 }
 

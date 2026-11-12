@@ -3,21 +3,21 @@ using System.Text.Json.Serialization;
 namespace RestFetch;
 
 public interface IResponseBodyDeserializer<in TResponse> where TResponse: IDisposable {
-	static abstract Task<TReturn?> Parse<TReturn>(TResponse resp, ref readonly ReturnTypeInfo returnTypeInfo, ref readonly ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken);
+	static abstract Task<TReturn?> Parse<TReturn>(TResponse resp, ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken);
 }
 
 public interface IResponseBodyDeserializer<in TResponse, TReturn> where TResponse: IDisposable {
-	static abstract Task<TReturn?> Parse(TResponse resp, ref readonly ReturnTypeInfo returnTypeInfo, ref readonly ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken);
+	static abstract Task<TReturn?> Parse(TResponse resp, ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken);
 }
 
 public interface IResponseBodyDeserializer: IResponseBodyDeserializer<HttpResponseMessage>;
 
 public interface IResponseAsyncEnumerableDeserializer<in TResponse> where TResponse: IDisposable {
-	static abstract IAsyncEnumerable<SseEventResult<TReturn?>> Parse<TReturn, TSseEventOnError>(TResponse resp, ref readonly ReturnTypeInfo returnTypeInfo, ref readonly ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken) where TSseEventOnError: IOnSseEventError;
+	static abstract IAsyncEnumerable<SseEventResult<TReturn?>> Parse<TReturn, TSseEventOnError>(TResponse resp, ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken) where TSseEventOnError: IOnSseEventError;
 }
 
 public interface IResponseAsyncEnumerableDeserializer<in TResponse, TReturn> where TResponse: IDisposable {
-	static abstract IAsyncEnumerable<SseEventResult<TReturn?>> Parse<TSseEventOnError>(TResponse resp, ref readonly ReturnTypeInfo returnTypeInfo, ref readonly ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken) where TSseEventOnError: IOnSseEventError;
+	static abstract IAsyncEnumerable<SseEventResult<TReturn?>> Parse<TSseEventOnError>(TResponse resp, ApiContext context, JsonSerializerContext? jsonContext, CancellationToken cancellationToken) where TSseEventOnError: IOnSseEventError;
 }
 
 public interface IResponseAsyncEnumerableDeserializer: IResponseAsyncEnumerableDeserializer<HttpResponseMessage>;

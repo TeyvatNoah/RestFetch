@@ -90,8 +90,8 @@ public sealed class SourceBuilder: IDisposable {
 	}
 
 	// typeName给interface生成对应类型时指定类型名
-	public SourceBuilder CreateType(string ns, Version version, TypeInfo type, Action<SourceBuilder>? fillContent, bool withContainingType, string? typeName = null, string? iface = null) {
-		static void AppendTypeHeader(SourceBuilder sb, string ns, Version version, TypeInfo type, string? typeName, string? @interface) {
+	public SourceBuilder CreateType(string ns, Version version, TypeInfo type, Action<SourceBuilder>? fillContent, bool withContainingType, string? typeName = null, string? iface = null, bool withGeneric = true) {
+		static void AppendTypeHeader(SourceBuilder sb, string ns, Version version, TypeInfo type, string? typeName, string? @interface, bool withGeneric = true) {
 
 			var accessibility = type.DeclaredAccessibility switch {
 				Accessibility.Public => "public ",
@@ -145,16 +145,18 @@ public sealed class SourceBuilder: IDisposable {
 			// 接口
 			if (!string.IsNullOrEmpty(typeName)) {
 				sb.Append(typeName);
-				if (type.IsGenericType && !type.TypeParameters.IsEmpty) {
+				if (withGeneric && type.IsGenericType && !type.TypeParameters.IsEmpty) {
 					sb.Append('<');
 					sb.StringBuilder.AppendJoin(',', type.TypeParameters.Select(static t => t.Name));
 					sb.Append('>');
 				}
 				sb.Append(": ");
 				if (@interface is not null) {
-					sb.Append(@interface).Append(", ");
+					sb.Append(@interface).Append(" ");
 				}
-				sb.Append(type.FullyQualifiedNameWithGlobalAndWhereClauses);
+				if (withGeneric) {
+					sb.Append(type.FullyQualifiedNameWithGlobalAndWhereClauses);
+				}
 				// if (!string.IsNullOrEmpty(type.WhereClauses)) {
 				// 	sb.Append('\n').Append(type.WhereClauses);
 				// }
@@ -177,9 +179,9 @@ public sealed class SourceBuilder: IDisposable {
 		}
 
 
-		SourceBuilder CreateTypeInternal(string ns, Version version, string innerTypeName, TypeInfo type, Action<SourceBuilder>? fillContent, string? typeName = null, string? iface = null) {
+		SourceBuilder CreateTypeInternal(string ns, Version version, string innerTypeName, TypeInfo type, Action<SourceBuilder>? fillContent, string? typeName = null, string? iface = null, bool withGeneric = true) {
 			if (type.ContainingType is null) {
-				AppendTypeHeader(this, ns, version, type, typeName, iface);
+				AppendTypeHeader(this, ns, version, type, typeName, iface, withGeneric);
 				fillContent?.Invoke(this);
 				AppendLine("}\n");
 				return this;
@@ -195,15 +197,15 @@ public sealed class SourceBuilder: IDisposable {
 							.Append(@""")]")
 							.Append('\n');
 						}
-						AppendTypeHeader(sb, ns, version, type, typeName, iface);
+						AppendTypeHeader(sb, ns, version, type, typeName, iface, withGeneric);
 						fillContent?.Invoke(sb);
 						sb.AppendLine("}\n");
-				}), null, null);
+				}), null, null, withGeneric);
 			}
 		}
 
 		if (withContainingType) {
-			return CreateTypeInternal(ns, version, type.MinimallyQualifiedName, type, fillContent, typeName, iface);
+			return CreateTypeInternal(ns, version, type.MinimallyQualifiedName, type, fillContent, typeName, iface, withGeneric);
 		} else {
 			AppendLine("[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]")
 			.Append($@"[global::System.CodeDom.Compiler.GeneratedCodeAttribute(""", true)
@@ -212,7 +214,7 @@ public sealed class SourceBuilder: IDisposable {
 			.Append(version.ToString())
 			.Append(@""")]")
 			.Append('\n');
-			AppendTypeHeader(this, ns, version, type, typeName, iface);
+			AppendTypeHeader(this, ns, version, type, typeName, iface, withGeneric);
 			fillContent?.Invoke(this);
 			AppendLine("}\n");
 			return this;
@@ -221,26 +223,6 @@ public sealed class SourceBuilder: IDisposable {
 	}
 
 
-// TODO
-	// public void Example() {
-	// 	var sb = new SourceBuilder();
-	// 	var str = sb.CreateFile(static sourceBuilder => {
-	// 			sourceBuilder.CreateNamespace(new(
-	// 				Name: "Foo",
-	// 				FullyQualifiedName: "Bar.Foo",
-	// 				IsGlobalNamespace: false,
-	// 				ContainingNamespace: new(
-	// 					Name: "Bar",
-	// 					FullyQualifiedName: "Bar",
-	// 					IsGlobalNamespace: false,
-	// 					ContainingNamespace: null
-	// 				)
-	// 			), static sb => {
-	// 					sb.CreateIndent(static sb => {
-	// 					});
-	// 			})
-	// 	});
-	// }
 
 	public SourceBuilder CreateMethod(string ns, Version version, MethodInfo methodInfo, Action<SourceBuilder>? fillContent) {
 			AppendLine("[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]")

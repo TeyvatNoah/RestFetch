@@ -674,7 +674,6 @@ public partial class QueryString<TEncoder>:
 		private List<string>.Enumerator _listEnumerator;
 
 		public Enumerator(QueryString<TEncoder> qs) {
-			// TODO 确认此构造函数在foreach时候会被调用,以及确认此迭代器工作正确
 			_dictEnumerator = qs._dict.GetEnumerator();
 			_dictEnumerator.MoveNext();
 			_listEnumerator = _dictEnumerator.Current.Value.GetEnumerator();

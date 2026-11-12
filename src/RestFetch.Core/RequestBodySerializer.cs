@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 using System.Text.Unicode;
 
 using RestFetch.WebUtilities;
@@ -55,10 +54,14 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken) {
 			if (jsonContext is not null) {
-				var jsonSerializerOptions = new JsonSerializerOptions(((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions) {
+				var jsonSerializerOptions = new JsonSerializerOptions(context.Options switch {
+					HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+					HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
+					_ => null
+				} ?? _fastPathOptions) {
 					TypeInfoResolver = jsonContext
 				};
 				if (jsonSerializerOptions.TryGetTypeInfo<TRequestBody?>(out var jsonTypeInfo)) {
@@ -72,7 +75,56 @@ public sealed class RequestBodySerializer {
 				// }
 			}
 			return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, new("application/json"),
-					((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options));
+					(context.Options switch {
+						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
+						_ => null
+					}) ?? _options));
+		}
+	}
+
+	public sealed class JsonBody<T>: IRequestBodySerializer<RestFetch.JsonBody<T>, HttpContent> where T: notnull {
+		// Stream
+		[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026")]
+		[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonContent))]
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ValueTask<HttpContent> Serialize(RestFetch.JsonBody<T>? value,
+			JsonSerializerContext? jsonContext,
+			ApiContext context,
+			CancellationToken cancellationToken) {
+			if (jsonContext is not null) {
+				var jsonSerializerOptions = new JsonSerializerOptions((context.Options switch {
+						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
+						_ => null
+					}) ?? _fastPathOptions) {
+					TypeInfoResolver = jsonContext
+				};
+				if (jsonSerializerOptions.TryGetTypeInfo<T>(out var jsonTypeInfo)) {
+					return ValueTask.FromResult<HttpContent>(new ReadOnlyMemoryContent(value?.Create(jsonTypeInfo) ?? Encoding.UTF8.GetBytes("null")) {
+						Headers = {
+							ContentType = new("application/json")
+						}
+					});
+				}
+
+				// var jsonSerializerOptions = ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions;
+				// var jsonTypeInfo = ((IJsonTypeInfoResolver)jsonContext).GetTypeInfo(typeof(TRequestBody), jsonSerializerOptions);
+				// if (jsonTypeInfo is not null) {
+				// 	return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, jsonTypeInfo, new("application/json")));
+				// }
+			}
+
+			return ValueTask.FromResult<HttpContent>(new ReadOnlyMemoryContent(value?.Create((context.Options switch {
+						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
+						_ => null
+					}) ?? _options) ?? Encoding.UTF8.GetBytes("null")) {
+				Headers = {
+					ContentType = new("application/json")
+				}
+			});
 		}
 	}
 
@@ -83,35 +135,65 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 		JsonSerializerContext? jsonContext,
-		ref readonly ApiContext context,
+		ApiContext context,
 		CancellationToken cancellationToken) {
-			byte[] bytes = default!;
 
-			if (jsonContext is not null) {
-				var jsonSerializerOptions = new JsonSerializerOptions(((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions) {
-					TypeInfoResolver = jsonContext
-				};
-				if (jsonSerializerOptions.TryGetTypeInfo<TRequestBody?>(out var jsonTypeInfo)) {
-					bytes = JsonSerializer.SerializeToUtf8Bytes(value, jsonTypeInfo);
-				} else {
-					bytes = JsonSerializer.SerializeToUtf8Bytes(value, ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options);
-				}
-				// var jsonSerializerOptions = ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions;
-				// var jsonTypeInfo = ((IJsonTypeInfoResolver)jsonContext).GetTypeInfo(typeof(TRequestBody), jsonSerializerOptions);
-				// if (jsonTypeInfo is not null) {
-				// 	bytes = JsonSerializer.SerializeToUtf8Bytes(value, jsonTypeInfo);
-				// } else {
-				// 	bytes = JsonSerializer.SerializeToUtf8Bytes(value, ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options);
-				// }
+			if (context.Metadata?.TryGetValue("__bufferedJson", out var bytes) ?? false) {
+				return ValueTask.FromResult<HttpContent>(new ByteArrayContent((byte[])bytes) {
+					Headers = {
+						ContentType = new("application/json"),
+						ContentLength = ((byte[])bytes).Length
+					}
+				});
+
 			} else {
-				bytes = JsonSerializer.SerializeToUtf8Bytes(value, ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options);
-			}
-
-			return ValueTask.FromResult<HttpContent>(new ByteArrayContent(bytes) {
-				Headers = {
-					ContentType = new("application/json")
+				if (jsonContext is not null) {
+					var jsonSerializerOptions = new JsonSerializerOptions((context.Options switch {
+						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
+						_ => null
+					}) ?? _fastPathOptions) {
+						TypeInfoResolver = jsonContext
+					};
+					if (jsonSerializerOptions.TryGetTypeInfo<TRequestBody?>(out var jsonTypeInfo)) {
+						bytes = JsonSerializer.SerializeToUtf8Bytes(value, jsonTypeInfo);
+					} else {
+						bytes = JsonSerializer.SerializeToUtf8Bytes(value, (context.Options switch {
+							HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+							HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
+							_ => null
+						}) ?? _options);
+					}
+					// var jsonSerializerOptions = ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _fastPathOptions;
+					// var jsonTypeInfo = ((IJsonTypeInfoResolver)jsonContext).GetTypeInfo(typeof(TRequestBody), jsonSerializerOptions);
+					// if (jsonTypeInfo is not null) {
+					// 	bytes = JsonSerializer.SerializeToUtf8Bytes(value, jsonTypeInfo);
+					// } else {
+					// 	bytes = JsonSerializer.SerializeToUtf8Bytes(value, ((HttpClientProxyOptions?)context.Options)?.SerializerOptions ?? _options);
+					// }
+				} else {
+					bytes = JsonSerializer.SerializeToUtf8Bytes(value, (context.Options switch {
+						HttpClientProxyOptions.HttpClientProxyClientOptions o => o.SerializerOptions,
+						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.SerializerOptions,
+						_ => null
+					}) ?? _options);
 				}
-			});
+
+				if (context.Metadata is null) {
+					context.Metadata = new() {
+						{ "__bufferedJson", bytes }
+					};
+				} else {
+					context.Metadata.Add("__bufferedJson", bytes);
+				}
+
+				return ValueTask.FromResult<HttpContent>(new ByteArrayContent((byte[])bytes) {
+					Headers = {
+						ContentType = new("application/json"),
+						ContentLength = ((byte[])bytes).Length
+					}
+				});
+			}
 		}
 	}
 
@@ -120,7 +202,7 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize(IEnumerable<KeyValuePair<string, string?>>? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken) {
 			var str = value is null ? "" : QueryString<FormEncoder>.Serialize(value);
 			return ValueTask.FromResult<HttpContent>(new StringContent(str, Encoding.ASCII, new MediaTypeHeaderValue("application/x-www-form-urlencoded")));
@@ -132,9 +214,13 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize(byte[]? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken)
-				=> ValueTask.FromResult<HttpContent?>(value is null ? null : new ByteArrayContent(value));
+				=> ValueTask.FromResult<HttpContent?>(value is null ? null : new ByteArrayContent(value) {
+					Headers = {
+						ContentLength = value.Length
+					}
+				});
 	}
 
 	public sealed class ByteMemory: IRequestBodySerializer<ReadOnlyMemory<byte>, HttpContent> {
@@ -142,9 +228,13 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize(ReadOnlyMemory<byte> value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken)
-				=> ValueTask.FromResult<HttpContent>(new ReadOnlyMemoryContent(value));
+				=> ValueTask.FromResult<HttpContent>(new ReadOnlyMemoryContent(value) {
+					Headers = {
+						ContentLength = value.Length
+					}
+				});
 	}
 
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix
@@ -154,7 +244,7 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize(System.IO.Stream? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken)
 				=> ValueTask.FromResult<HttpContent?>(value is null ? null : new StreamContent(value));
 	}
@@ -164,7 +254,7 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize(string? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken)
 				=> ValueTask.FromResult<HttpContent?>(value is null ? null : new StringContent(value));
 	}
@@ -174,7 +264,7 @@ public sealed class RequestBodySerializer {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize<TRequestBody>(TRequestBody? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken) {
 			MultipartFormDataContent? content = null;
 			if (value is null) {
@@ -225,11 +315,9 @@ public sealed class RequestBodySerializer {
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 	public sealed class OctetStream: IRequestBodySerializer<System.IO.Stream, HttpContent?> {
 #pragma warning restore CA1711 // Identifiers should not have incorrect suffix
-		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonContent))]
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize(System.IO.Stream? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken)
 				=> ValueTask.FromResult<HttpContent?>(value is null
 				? null
@@ -241,12 +329,32 @@ public sealed class RequestBodySerializer {
 				});
 	}
 
+	public sealed class StreamFactory<TFactory>: IRequestBodySerializer<TFactory, HttpContent?>
+		where TFactory: IStreamFactory {
+		public static ValueTask<HttpContent?> Serialize(TFactory? value,
+			JsonSerializerContext? jsonContext,
+			ApiContext context,
+			CancellationToken cancellationToken) {
+				return SerializeInternal(value);
+
+				static async ValueTask<HttpContent?> SerializeInternal(TFactory? value) {
+					return value is null ? null
+					// NOTE: 这里value.OpenRead()的Stream会在HttpContent被Dispose()的时候跟着Dispose()
+					: new StreamContent(await value.Create().ConfigureAwait(false)) {
+						Headers = {
+							ContentType = new(value.ContentType)
+						}
+					};
+				}
+			}
+	}
+
 	public sealed class Raw: IRequestBodySerializer<HttpContent, HttpContent?> {
 		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonContent))]
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize(HttpContent? value,
 			JsonSerializerContext? jsonContext,
-			ref readonly ApiContext context,
+			ApiContext context,
 			CancellationToken cancellationToken) => ValueTask.FromResult(value);
 	}
 }

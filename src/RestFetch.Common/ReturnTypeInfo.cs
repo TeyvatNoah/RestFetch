@@ -3,14 +3,14 @@ using System.Runtime.CompilerServices;
 namespace RestFetch;
 
 public readonly struct ReturnTypeInfo(
-	Type returnType,
-	bool isNullable,
-	bool isValueType,
-	bool skipNullableCheck,
-	ReturnTypeKind returnTypeKind,
-	ReturnTypeWrapperKind returnTypeWrapperKind
+	Type? returnType,
+	bool isNullable = false,
+	bool isValueType = false,
+	bool skipNullableCheck = false,
+	ReturnTypeKind returnTypeKind = ReturnTypeKind.Void,
+	ReturnTypeWrapperKind returnTypeWrapperKind = ReturnTypeWrapperKind.Void
 ): IEquatable<ReturnTypeInfo> {
-	public readonly Type ReturnType = returnType;
+	public readonly Type? ReturnType = returnType;
 
 	public readonly bool Nullable = isNullable;
 
@@ -22,7 +22,7 @@ public readonly struct ReturnTypeInfo(
 
 	public readonly ReturnTypeKind ReturnTypeKind = returnTypeKind;
 
-	public readonly override string ToString() => ReturnType.FullName!;
+	public readonly override string ToString() => ReturnType?.FullName ?? "void";
 
 	public readonly override bool Equals(object? obj) => obj is ReturnTypeInfo o && o == this;
 

@@ -2,19 +2,19 @@ using System.Runtime.CompilerServices;
 
 namespace RestFetch;
 
-public static class RestFetchService<TResponse, THttpClientProxy>
-	where TResponse: IDisposable
-	where THttpClientProxy: IHttpClientProxy<TResponse, THttpClientProxy> {
+public static class RestFetchService<THttpClient, TResponse>
+	where THttpClient: IDisposable
+	where TResponse: IDisposable {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>() where TAPI: IRestFetchApi<TAPI, TResponse, THttpClientProxy>
+	public static TAPI For<TAPI>() where TAPI: IRestFetchApi<TAPI, THttpClient, TResponse>
 		=> TAPI.Create();
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchApi<TAPI, TResponse, THttpClientProxy>
+	public static TAPI For<TAPI>(string baseAddress) where TAPI: IRestFetchApi<TAPI, THttpClient, TResponse>
 		=> TAPI.Create(baseAddress);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(THttpClientProxy httpClientProxy) where TAPI: IRestFetchApi<TAPI, TResponse, THttpClientProxy>
+	public static TAPI For<TAPI>(IHttpClientProxy<THttpClient, TResponse> httpClientProxy) where TAPI: IRestFetchApi<TAPI, THttpClient, TResponse>
 		=> TAPI.Create(httpClientProxy);
 }
 
@@ -29,6 +29,6 @@ public static class RestFetchService {
 		=> TAPI.Create(baseAddress);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static TAPI For<TAPI>(HttpClientProxy httpClientProxy) where TAPI: IRestFetchApi<TAPI>
+	public static TAPI For<TAPI>(IHttpClientProxy<HttpClient, HttpResponseMessage> httpClientProxy) where TAPI: IRestFetchApi<TAPI>
 		=> TAPI.Create(httpClientProxy);
 }

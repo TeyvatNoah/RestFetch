@@ -50,7 +50,6 @@ public sealed record ParameterInfo(
 			ScopedKind: symbol.ScopedKind,
 			Type: TypeInfo.CreateFromSymbolWithoutMethods(symbol.Type, knownTypes),
 			Location: new(symbol.Locations.FirstOrDefault() ?? Microsoft.CodeAnalysis.Location.None),
-			// TODO
 			Diagnostics: null
 		);
 }

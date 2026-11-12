@@ -1,9 +1,12 @@
 {
   "version": 2,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "restfetch.common": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Polly.Core": "[8.9.0, )"
+        }
       },
       "restfetch.core": {
         "type": "Project",
@@ -22,6 +25,12 @@
         "dependencies": {
           "ZString": "[2.6.0, )"
         }
+      },
+      "Polly.Core": {
+        "type": "CentralTransitive",
+        "requested": "[8.9.0, )",
+        "resolved": "8.9.0",
+        "contentHash": "Imm3q+XvH+8fiOdCkp+GggDQuxN3e4VznbRxODjjJxCurmAIfUEO4dKcPx8RCwocTkvP6Udw2DyXtC+45tu3jA=="
       },
       "ZString": {
         "type": "CentralTransitive",

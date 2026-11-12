@@ -29,6 +29,8 @@ public sealed class RestFetchSourceGenerator: IIncrementalGenerator {
 		"RestFetch.BaseAddressAttribute.cs",
 		"RestFetch.BeforeSendAttribute.cs",
 		"RestFetch.BodyAttribute.cs",
+		"RestFetch.RetryAttribute.cs",
+		"RestFetch.TimeoutAttribute.cs",
 		"RestFetch.ExceptionFactoryAttribute.cs",
 		"RestFetch.HeaderAttribute.cs",
 		"RestFetch.HttpClientProxyAttribute.cs",
@@ -66,7 +68,6 @@ public sealed class RestFetchSourceGenerator: IIncrementalGenerator {
 		});
 
 		// if (!Debugger.IsAttached){
-
 		// 	Debugger.Launch();
 		// }
 
@@ -108,10 +109,10 @@ public sealed class RestFetchSourceGenerator: IIncrementalGenerator {
 			.SelectMany(static (apiDefinitionInfo, _) => apiDefinitionInfo.Diagnostics ?? Array.Empty<DiagnosticInfo>().ToImmutableArray());
 
 		context.RegisterImplementationSourceOutput(partialTypeProvider, static (ctx, apiDefinition) => {
-			ctx.AddSource($"{apiDefinition.TypeInfo.FullyQualifiedName.Replace("<", null).Replace(">", null).Replace(",", null)}.cs", SourceText.From(Emitter.GenerateSource(apiDefinition), Encoding.UTF8));
+			ctx.AddSource($"{apiDefinition.TypeInfo.FullyQualifiedName.Replace("<", null).Replace(">", null).Replace(",", null).Replace(" ", null)}.cs", SourceText.From(Emitter.GenerateSource(apiDefinition), Encoding.UTF8));
 		});
 		context.RegisterSourceOutput(interfaceProvider, static (ctx, apiDefinition) => {
-			ctx.AddSource($"{apiDefinition.TypeInfo.FullyQualifiedName.Replace("<", null).Replace(">", null).Replace(",", null)}.cs", SourceText.From(Emitter.GenerateSource(apiDefinition), Encoding.UTF8));
+			ctx.AddSource($"{apiDefinition.TypeInfo.FullyQualifiedName.Replace("<", null).Replace(">", null).Replace(",", null).Replace(" ", null)}.cs", SourceText.From(Emitter.GenerateSource(apiDefinition), Encoding.UTF8));
 		});
 
 		context.RegisterSourceOutput(diagnosticProvider, static (ctx, data) =>

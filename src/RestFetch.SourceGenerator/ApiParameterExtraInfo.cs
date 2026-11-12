@@ -160,11 +160,17 @@ public record ApiParameterExtraInfo(
 		var attrTypeName = attr.AttributeClass!.MetadataName;
 		if (attrTypeName == "BodyAttribute") {
 			var configureAwait = false;
+			bool? takeOwnershipOfSerializeResult = null;
+			bool? takeOwnershipOfArgument = null;
 			string? jsonContextFullyQualifiedNameWithGlobal = null;
 			foreach (var item in attr.NamedArguments) {
 				// var (key, value) = item;
 				if (item.Key == "ConfigureAwait") {
 					configureAwait = (bool)item.Value.Value!;
+				} else if (item.Key == "TakeOwnershipOfSerializeResult") {
+					takeOwnershipOfSerializeResult = (bool)item.Value.Value!;
+				} else if (item.Key == "TakeOwnershipOfArgument") {
+					takeOwnershipOfArgument = (bool)item.Value.Value!;
 				} else if (item.Key == "JsonContext") {
 					if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
 						jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
@@ -184,12 +190,21 @@ public record ApiParameterExtraInfo(
 				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.SystemString";
 			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.Stream)) {
 				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Stream";
+				takeOwnershipOfSerializeResult ??= false;
+			} else if (parameterSymbol.Type.ImplementsInterface(knownTypes.StreamFactoryT)) {
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.StreamFactory<{parameterSymbol.Type.ToDisplayString(TypeInfo.FullyQualifiedFormat).TrimEnd('?')}>";
+				takeOwnershipOfSerializeResult ??= true;
+			} else if (parameterSymbol.Type.OriginalDefinition.InheritsFrom(knownTypes.JsonBodyT)) {
+				var bodyType = parameterSymbol.Type.GetTGeneric()[0];
+				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.JsonBody<{bodyType.ToDisplayString(TypeInfo.FullyQualifiedFormat).TrimEnd('?')}>";
+				takeOwnershipOfArgument ??= true;
 			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.ByteArray)) {
 				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.ByteArray";
 			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.ByteMemory)) {
 				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.ByteMemory";
 			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.HttpContent)) {
 				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Raw";
+				takeOwnershipOfSerializeResult ??= false;
 			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.FileInfo)) {
 				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.MultipartFormData";
 			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.RestFetchFileInfo)) {
@@ -201,10 +216,16 @@ public record ApiParameterExtraInfo(
 			} else if (parameterSymbol.Type.InheritsFrom(knownTypes.IEnumerableKeyValuePairString)) {
 				defaultSerializer = $"global::{RestFetchSourceGenerator.RestFetchNamespaceName}.RequestBodySerializer.Form";
 			}
+
+			takeOwnershipOfSerializeResult ??= true;
+			takeOwnershipOfArgument ??= false;
+
 			return new BodyParameter(
 				Name: parameterSymbol.Name,
 				IsValid: true,
 				ConfigureAwait: configureAwait,
+				TakeOwnershipOfSerializeResult: takeOwnershipOfSerializeResult ?? false,
+				TakeOwnershipOfArgument: takeOwnershipOfArgument ?? false,
 				JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 				Serializer: new(
 					ConfigureAwait: configureAwait,
@@ -225,11 +246,17 @@ public record ApiParameterExtraInfo(
 			|| serializerTypeSymbol.ImplementsInterface(iRequestBodySerializerGenericSymbol2)
 			) {
 				var configureAwait = false;
+				bool takeOwnershipOfSerializeResult = false;
+				bool takeOwnershipOfArgument = false;
 				string? jsonContextFullyQualifiedNameWithGlobal = null;
 				foreach (var item in attr.NamedArguments) {
 					// var (key, value) = item;
 					if (item.Key == "ConfigureAwait") {
 						configureAwait = (bool)item.Value.Value!;
+					} else if (item.Key == "TakeOwnershipOfSerializeResult") {
+						takeOwnershipOfSerializeResult = (bool)item.Value.Value!;
+					} else if (item.Key == "TakeOwnershipOfArgument") {
+						takeOwnershipOfArgument = (bool)item.Value.Value!;
 					} else if (item.Key == "JsonContext") {
 						if (item.Value.Value is INamedTypeSymbol jsonContextType && jsonContextType.InheritsFrom(knownTypes.JsonSerializerContext)) {
 							jsonContextFullyQualifiedNameWithGlobal = jsonContextType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
@@ -248,6 +275,8 @@ public record ApiParameterExtraInfo(
 					Name: parameterSymbol.Name,
 					IsValid: true,
 					ConfigureAwait: configureAwait,
+					TakeOwnershipOfSerializeResult: takeOwnershipOfSerializeResult,
+					TakeOwnershipOfArgument: takeOwnershipOfArgument,
 					JsonContext: jsonContextFullyQualifiedNameWithGlobal,
 					Serializer: new(
 						ConfigureAwait: configureAwait,
@@ -373,7 +402,7 @@ public record ApiParameterExtraInfo(
 			}
 		} else if (attrTypeName == "QueryAttribute") {
 			var alias = attr.ConstructorArguments.Length == 1 ? (string)attr.ConstructorArguments[0].Value! : parameterSymbol.Name;
-			var autoAlias = attr.NamedArguments.Length != 1 || (bool)attr.NamedArguments[0].Value.Value!;
+			var valueOnly = attr.NamedArguments.Length == 1 && (bool)attr.NamedArguments[0].Value.Value!;
 			if (!IsDefaultQueryStringSerializerSupportedType(parameterSymbol.Type, null, knownTypes)) {
 				return new ApiParameterExtraInfo(
 					Name: parameterSymbol.Name,
@@ -385,7 +414,7 @@ public record ApiParameterExtraInfo(
 				return new QueryParameter(
 					Name: parameterSymbol.Name,
 					Alias: alias,
-					AutoAlias: autoAlias,
+					ValueOnly: valueOnly,
 					IsValid: true,
 					Serializer: new(
 						FullyQualifiedName: "RestFetch.WebUtilities.QueryString",
@@ -405,7 +434,7 @@ public record ApiParameterExtraInfo(
 			var iAliasQueryStringSerializer = knownTypes.AliasQueryStringSerializer;
 			var serializerTypeSymbol = attr.AttributeClass.TypeArguments[0];
 			var alias = attr.ConstructorArguments.Length == 1 ? (string)attr.ConstructorArguments[0].Value! : parameterSymbol.Name;
-			var autoAlias = attr.NamedArguments.Length != 1 || (bool)attr.NamedArguments[0].Value.Value!;
+			var valueOnly = attr.NamedArguments.Length == 1 && (bool)attr.NamedArguments[0].Value.Value!;
 			var interfaceList = new List<string>();
 			var isIQueryStringSerializer = serializerTypeSymbol.ImplementsInterface(iQueryStringSerializer);
 			var isQueryStringGenericSerializer = serializerTypeSymbol.ImplementsInterface(iQueryStringGenericSerializer);
@@ -426,7 +455,7 @@ public record ApiParameterExtraInfo(
 			}
 			if (isAliasQueryStringSerializer) {
 				interfaceList.Add("IAliasQueryStringSerializer`1");
-			} else if (autoAlias) {
+			} else if (!valueOnly) {
 				return new ApiParameterExtraInfo(
 					Name: parameterSymbol.Name,
 					Kind: ApiParameterKind.None,
@@ -445,7 +474,7 @@ public record ApiParameterExtraInfo(
 				: new QueryParameter(
 				Name: parameterSymbol.Name,
 				Alias: alias,
-				AutoAlias: autoAlias,
+				ValueOnly: valueOnly,
 				IsValid: true,
 				Serializer: new(
 					FullyQualifiedName: serializerTypeSymbol.ToDisplayString(),
@@ -596,6 +625,8 @@ public sealed record BodyParameter(
 	bool IsValid,
 	EquatableArray<DiagnosticInfo>? Diagnostics,
 
+	bool TakeOwnershipOfSerializeResult,
+	bool TakeOwnershipOfArgument,
 	bool ConfigureAwait,
 	string? JsonContext,
 	HookInfo Serializer
@@ -630,7 +661,7 @@ public sealed record QueryParameter(
 	HookInfo Serializer,
 	EquatableArray<string> SerializerInterfaceMetadataNames,
 	string? Alias,
-	bool AutoAlias
+	bool ValueOnly
 ): ApiParameterExtraInfo(
 	Name,
 	Kind: ApiParameterKind.QueryString,

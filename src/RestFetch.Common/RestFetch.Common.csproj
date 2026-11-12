@@ -68,6 +68,7 @@
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="LICENSE" Pack="true" PackagePath="\" />
+		<PackageReference Include="Polly.Core" />
 		<!-- for icon -->
 		<!-- <None Include="images\icon.png" Pack="true" PackagePath="\"/> -->
   </ItemGroup>

@@ -53,7 +53,7 @@ public class DelegatingStream(Stream innerStream): Stream() {
 
 	protected virtual async ValueTask DisposeAsyncCore() {
 		if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0) {
-			await _innerStream.DisposeAsync();
+			await _innerStream.DisposeAsync().ConfigureAwait(false);
 		}
 		Dispose(true);
 	}

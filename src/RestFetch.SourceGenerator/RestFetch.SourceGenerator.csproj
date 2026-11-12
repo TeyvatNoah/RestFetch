@@ -96,6 +96,8 @@
 		<EmbeddedResource Include="./BaseAddressAttribute.cs" LogicalName="RestFetch.BaseAddressAttribute.cs" />
 		<EmbeddedResource Include="./BeforeSendAttribute.cs" LogicalName="RestFetch.BeforeSendAttribute.cs" />
 		<EmbeddedResource Include="./BodyAttribute.cs" LogicalName="RestFetch.BodyAttribute.cs" />
+		<EmbeddedResource Include="./RetryAttribute.cs" LogicalName="RestFetch.RetryAttribute.cs" />
+		<EmbeddedResource Include="./TimeoutAttribute.cs" LogicalName="RestFetch.TimeoutAttribute.cs" />
 		<EmbeddedResource Include="./ExceptionFactoryAttribute.cs" LogicalName="RestFetch.ExceptionFactoryAttribute.cs" />
 		<EmbeddedResource Include="./HeaderAttribute.cs" LogicalName="RestFetch.HeaderAttribute.cs" />
 		<EmbeddedResource Include="./HttpClientProxyAttribute.cs" LogicalName="RestFetch.HttpClientProxyAttribute.cs" />

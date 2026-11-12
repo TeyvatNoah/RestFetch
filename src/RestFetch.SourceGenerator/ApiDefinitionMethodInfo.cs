@@ -21,9 +21,11 @@ public sealed record ApiDefinitionMethodInfo(
 	string BaseAddress,
 	string IdGenerator,
 	string DeserializedResponseTypeName,
+	RetryOptions? RetryOptions,
+	TimeoutOptions? TimeoutOptions,
 	ReturnTypeWrapperKind AsyncReturnTypeKind,
 	ReturnTypeKind ReturnDataTypeKind,
-	TypeInfo? ExceptedReturnType,
+	TypeInfo? ExpectedReturnType,
 	TypeInfo? ReturnDataType,
 	HookInfo? BeforeSendHook,
 	HookInfo? AfterResponseHook,
@@ -107,7 +109,12 @@ public sealed record ApiDefinitionMethodInfo(
 		var validStaticHeaders = staticHeaders
 			.Where(static header => header.Diagnostics is null)
 			.Union(apiDefinitionType.StaticHeaders, HeaderEqualityComparer.Default)
-			.Where(static header => header.Value is not null);
+			.Distinct(HeaderEqualityComparer.Default)
+			.GroupBy(static header => header.Key, StringComparer.OrdinalIgnoreCase)
+			.Where(static headers => !headers.Any(static h => h.Value is null))
+			.SelectMany(static headers => headers);
+
+
 			// 去重相同的header,但是允许方法级的覆盖类级
 			// .Distinct(HeaderEqualityComparer.Default);
 		var headerErrors = staticHeaders
@@ -131,7 +138,9 @@ public sealed record ApiDefinitionMethodInfo(
 		var onError = ApiDefinitionTypeInfo.GetOnError(attrList, knownTypes) ?? apiDefinitionType.OnError;
 		var onSseEventError = ApiDefinitionTypeInfo.GetOnSseEventError(attrList, knownTypes) ?? apiDefinitionType.OnSseEventError;
 		var onSuccess = ApiDefinitionTypeInfo.GetOnSuccess(attrList, knownTypes) ?? apiDefinitionType.OnSuccess;
-		// TODO 应当根据方法的返回类型提供默认值,应当检查返回类型是否被默认反序列化器支持
+
+		var retryOptions = ApiDefinitionTypeInfo.GetRetryOptions(attrList, knownTypes);
+		var timeoutOptions = ApiDefinitionTypeInfo.GetTimeoutOptions(attrList, knownTypes);
 
 		var miscErrors = new List<DiagnosticInfo>();
 		var parameterExtraInfos = symbol.Parameters.Select(parameter => ApiParameterExtraInfo.CreateFromSymbol(parameter, knownTypes)).ToArray();
@@ -171,35 +180,35 @@ public sealed record ApiDefinitionMethodInfo(
 		var returnsRawResponse = false;
 		var returnsIAsyncEnumerableT = symbol.ReturnType.OriginalDefinition.InheritsFrom(knownTypes.IAsyncEnumerableT);
 		TypeInfo? returnDataType = null;
-		TypeInfo exceptReturnTypeInfo = default!;
+		TypeInfo expectedReturnTypeInfo = default!;
 		if (symbol.ReturnType is INamedTypeSymbol {
 			IsGenericType: true,
-			TypeArguments: [var exceptedReturnType, ..]
+			TypeArguments: [var expectedReturnType, ..]
 		}) {
-			exceptReturnTypeInfo = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(exceptedReturnType, knownTypes);
-			if (exceptedReturnType.InheritsFrom(knownTypes.Stream)) {
+			expectedReturnTypeInfo = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(expectedReturnType, knownTypes);
+			if (expectedReturnType.InheritsFrom(knownTypes.Stream)) {
 				returnsStream = true;
 			}
-			if (exceptedReturnType.ToDisplayString(TypeInfo.FullyQualifiedFormat) == apiDefinitionType.TResponse) {
+			if (expectedReturnType.ToDisplayString(TypeInfo.FullyQualifiedFormat) == apiDefinitionType.TResponse) {
 				returnsRawResponse = true;
 			}
 
 			if (returnsIAsyncEnumerableT) {
-				var deserializedRespType = knownTypes.IAsyncEnumerableT!.Construct(knownTypes.SseEventResultT!.Construct(exceptedReturnType));
+				var deserializedRespType = knownTypes.IAsyncEnumerableT!.Construct(knownTypes.SseEventResultT!.Construct(expectedReturnType));
 				deserializedRespTypeName = deserializedRespType.ToDisplayString(TypeInfo.FullyQualifiedFormat);
 			}
 
-			if (exceptedReturnType is INamedTypeSymbol {
+			if (expectedReturnType is INamedTypeSymbol {
 				IsGenericType: true,
 				TypeArguments: [ITypeSymbol returnDatType, ..]
 			}) {
-				if (exceptedReturnType.OriginalDefinition.InheritsFrom(knownTypes.SseEventT)
-					|| exceptedReturnType.OriginalDefinition.InheritsFrom(knownTypes.SseItemT)
-					|| exceptedReturnType.OriginalDefinition.InheritsFrom(knownTypes.ApiResponseT)) {
+				if (expectedReturnType.OriginalDefinition.InheritsFrom(knownTypes.SseEventT)
+					|| expectedReturnType.OriginalDefinition.InheritsFrom(knownTypes.SseItemT)
+					|| expectedReturnType.OriginalDefinition.InheritsFrom(knownTypes.ApiResponseT)) {
 					returnDataType = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(returnDatType, knownTypes);
 				}
 			} else {
-				returnDataType = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(exceptedReturnType, knownTypes);
+				returnDataType = TypeInfo.CreateFromSymbolWithoutBaseTypeAndMethods(expectedReturnType, knownTypes);
 			}
 		}
 
@@ -295,6 +304,8 @@ public sealed record ApiDefinitionMethodInfo(
 		// };
 
 		return new(
+			RetryOptions: retryOptions,
+			TimeoutOptions: timeoutOptions,
 			DeserializedResponseTypeName: deserializedRespTypeName,
 			MethodInfo: methodInfo,
 			IsValid: isValid,
@@ -305,7 +316,7 @@ public sealed record ApiDefinitionMethodInfo(
 			ReturnsRawResponse: returnsRawResponse,
 			AsyncReturnTypeKind: asyncReturnTypeKind,
 			ReturnDataTypeKind: returnDataTypeKind,
-			ExceptedReturnType: returnVoid ? null : exceptReturnTypeInfo,
+			ExpectedReturnType: returnVoid ? null : expectedReturnTypeInfo,
 			ReturnDataType: returnDataType,
 			Path: path,
 			PathSegments: pathSegments?.ToImmutableArray(),
@@ -335,7 +346,8 @@ public sealed record ApiDefinitionMethodInfo(
 				onSseEventError?.Diagnostics,
 				onSuccess?.Diagnostics,
 				responseBodyDeserializer?.Diagnostics,
-				miscErrors.ToImmutableArray()
+				miscErrors.ToImmutableArray(),
+				retryOptions?.Diagnostics
 			)
 		);
 	}

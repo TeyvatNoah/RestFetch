@@ -23,7 +23,7 @@ public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, 
 	public FastQueryString() {}
 
 	public FastQueryString(string str) {
-		// TODO 是否需要escape?
+		// 是否需要escape? 不要,由用户自己负责
 		_builder.Append(str);
 		_isFirst = false;
 	}
@@ -412,7 +412,7 @@ public partial struct FastQueryString<TEncoder>: IQueryStringSerializer<FastQuer
 	public FastQueryString() {}
 
 	public FastQueryString(string str) {
-		// TODO 是否需要escape?
+		// 是否需要escape?不要,由用户自己负责
 		_builder.Append(str);
 		_isFirst = false;
 	}

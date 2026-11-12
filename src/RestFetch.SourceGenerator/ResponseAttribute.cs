@@ -11,14 +11,7 @@ namespace RestFetch;
 	Inherited = true,
 	AllowMultiple = false
 	)]
-// TODO T 约束必须实现接口IRequestBodySerializer
-// 但是IRequestBodySerializer接口是泛型,还需要一个泛型参数U
-// 以确保T可以序列化U类型的数据
-// 但是此类型作为Attr,使用时其实可以知道目标类型U
-// 增加一个泛型参数又显得有点多余,故不对T做泛型约束
-// 交给源生成器做约束
 internal class ResponseAttribute<TDeserializer>: Attribute {
-	// TODO 如果有默认泛型参数就考虑用泛型
 	public readonly Type Deserializer = typeof(TDeserializer);
 
 	// 执行hook的时候ConfigureAwait(false)的参数
@@ -26,7 +19,7 @@ internal class ResponseAttribute<TDeserializer>: Attribute {
 	// 允许返回类型为非可空,跳过运行时可空类型检查
 	public bool SkipNullableCheck = false;
 
-	// TODO 需要源生成器检查类型是JsonSerializeContext
+	// 需要源生成器检查类型是JsonSerializeContext
 	public Type? JsonContext;
 
 	public ResponseAttribute() {}
@@ -40,7 +33,7 @@ internal class ResponseAttribute: Attribute {
 	// 允许返回类型为非可空,跳过运行时可空类型检查
 	public bool SkipNullableCheck = false;
 
-	// TODO 需要源生成器检查类型是JsonSerializeContext
+	// 需要源生成器检查类型是JsonSerializeContext
 	public Type? JsonContext;
 
 	public ResponseAttribute() {}

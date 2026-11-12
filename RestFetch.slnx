@@ -4,6 +4,7 @@
     <Project Path="src/RestFetch.Common/RestFetch.Common.csproj" />
     <Project Path="src/RestFetch.Core/RestFetch.Core.csproj" />
     <Project Path="src/RestFetch.Examples/RestFetch.Examples.csproj" />
+    <Project Path="src/RestFetch.Extensions/RestFetch.Extensions.csproj" />
     <Project Path="src/RestFetch.SourceGenerator/RestFetch.SourceGenerator.csproj" />
     <Project Path="src/RestFetch.Tests/RestFetch.Tests.csproj" />
     <Project Path="src/RestFetch.WebUtilities/RestFetch.WebUtilities.csproj" />

@@ -2,8 +2,10 @@ using System.Net;
 
 namespace RestFetch;
 
-public sealed class RestFetchApiException(RequestId id, string? msg, Version version): Exception(msg) {
+public sealed class RestFetchApiException(string methodName, RequestId id, Version version, string? msg): Exception(msg) {
 	public readonly RequestId Id = id;
+
+	public readonly string MethodName = methodName;
 
 	public readonly HttpStatusCode StatusCode;
 

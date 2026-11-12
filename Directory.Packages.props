@@ -5,5 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
 		<PackageVersion Include="ZString" Version="2.6.0" />
+		<PackageVersion Include="Polly.Core" Version="8.9.0" />
+		<PackageVersion Include="Microsoft.Extensions.Http" Version="11.0.0-rc.3.26522.148" />
   </ItemGroup>
 </Project>
