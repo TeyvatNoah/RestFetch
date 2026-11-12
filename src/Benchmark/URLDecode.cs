@@ -10,8 +10,8 @@ using SixTatami.Utilities;
 
 namespace TODO.Benchmark;
 
-[SimpleJob(RuntimeMoniker.Net80, launchCount: 3)]
-[SimpleJob(RuntimeMoniker.NativeAot80, launchCount:3)]
+[SimpleJob(RuntimeMoniker.Net90, launchCount: 3)]
+[SimpleJob(RuntimeMoniker.NativeAot90, launchCount:3)]
 [AsciiDocExporter]
 // [HtmlExporter]
 // [CsvExporter]
@@ -37,7 +37,7 @@ public class URLDecode {
 	public string Method2() => Uri.UnescapeDataString(LongStrShouldDecode);
 
 	[BenchmarkCategory("Long String should decode"), Benchmark(Description = "UriFromBCL")]
-	public string Method3() => UriFromBCL.UnescapeDataString(LongStrShouldDecode);
+	public string Method3() => Uri.UnescapeDataString(LongStrShouldDecode);
 
 	[BenchmarkCategory("Long String should decode"), Benchmark(Description = "HttpUtility")]
 	public string Method4() => HttpUtility.UrlDecode(LongStrShouldDecode);
@@ -46,7 +46,7 @@ public class URLDecode {
 	public string Method5() => System.Net.WebUtility.UrlDecode(LongStrShouldDecode);
 
 	[BenchmarkCategory("Long String should decode"), Benchmark(Description = "WebUtility")]
-	public string Method6() => WebUtility.UrlDecode(LongStrShouldDecode);
+	public string Method6() => URLHelper.EncodeURIComponent(LongStrShouldDecode);
 
 	[BenchmarkCategory("Long String should decode"), Benchmark(Description = "BunURL1")]
 	public string Method7() => BunURL.DecodeURIComponent(LongStrShouldDecode, true);
@@ -61,7 +61,7 @@ public class URLDecode {
 	public string Method10() => Uri.UnescapeDataString(ShortStrShouldDecode);
 
 	[BenchmarkCategory("Short String should decode"), Benchmark(Description = "UriFromBCL")]
-	public string Method11() => UriFromBCL.UnescapeDataString(ShortStrShouldDecode);
+	public string Method11() => Uri.UnescapeDataString(ShortStrShouldDecode);
 
 	[BenchmarkCategory("Short String should decode"), Benchmark(Description = "HttpUtility")]
 	public string Method12() => HttpUtility.UrlDecode(ShortStrShouldDecode);
@@ -70,7 +70,7 @@ public class URLDecode {
 	public string Method13() => System.Net.WebUtility.UrlDecode(ShortStrShouldDecode);
 
 	[BenchmarkCategory("Short String should decode"), Benchmark(Description = "WebUtility")]
-	public string Method14() => WebUtility.UrlDecode(ShortStrShouldDecode);
+	public string Method14() => URLHelper.DecodeURIComponent(ShortStrShouldDecode);
 
 	[BenchmarkCategory("Short String should decode"), Benchmark(Description = "BunURL1")]
 	public string Method15() => BunURL.DecodeURIComponent(ShortStrShouldDecode, true);
@@ -85,7 +85,7 @@ public class URLDecode {
 	public string Method18() => Uri.UnescapeDataString(LongStrShouldNotDecode);
 
 	[BenchmarkCategory("Long String should not decode"), Benchmark(Description = "UriFromBCL")]
-	public string Method19() => UriFromBCL.UnescapeDataString(LongStrShouldNotDecode);
+	public string Method19() => Uri.UnescapeDataString(LongStrShouldNotDecode);
 
 	[BenchmarkCategory("Long String should not decode"), Benchmark(Description = "HttpUtility")]
 	public string Method20() => HttpUtility.UrlDecode(LongStrShouldNotDecode);
@@ -94,7 +94,7 @@ public class URLDecode {
 	public string Method21() => System.Net.WebUtility.UrlDecode(LongStrShouldNotDecode);
 
 	[BenchmarkCategory("Long String should not decode"), Benchmark(Description = "WebUtility")]
-	public string Method22() => WebUtility.UrlDecode(LongStrShouldNotDecode);
+	public string Method22() => URLHelper.DecodeURIComponent(LongStrShouldNotDecode);
 
 	[BenchmarkCategory("Long String should not decode"), Benchmark(Description = "BunURL1")]
 	public string Method23() => BunURL.DecodeURIComponent(LongStrShouldNotDecode, true);
@@ -109,7 +109,7 @@ public class URLDecode {
 	public string Method26() => Uri.UnescapeDataString(ShortStrShouldNotDecode);
 
 	[BenchmarkCategory("Short String should not decode"), Benchmark(Description = "UriFromBCL")]
-	public string Method27() => UriFromBCL.UnescapeDataString(ShortStrShouldNotDecode);
+	public string Method27() => Uri.UnescapeDataString(ShortStrShouldNotDecode);
 
 	[BenchmarkCategory("Short String should not decode"), Benchmark(Description = "HttpUtility")]
 	public string Method28() => HttpUtility.UrlDecode(ShortStrShouldNotDecode);
@@ -118,7 +118,7 @@ public class URLDecode {
 	public string Method29() => System.Net.WebUtility.UrlDecode(ShortStrShouldNotDecode);
 
 	[BenchmarkCategory("Short String should not decode"), Benchmark(Description = "WebUtility")]
-	public string Method30() => WebUtility.UrlDecode(ShortStrShouldNotDecode);
+	public string Method30() => URLHelper.DecodeURIComponent(ShortStrShouldNotDecode);
 
 	[BenchmarkCategory("Short String should not decode"), Benchmark(Description = "BunURL1")]
 	public string Method31() => BunURL.DecodeURIComponent(ShortStrShouldNotDecode, true);

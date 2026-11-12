@@ -11,8 +11,8 @@ using SixTatami.Utilities;
 
 namespace TODO.Benchmark;
 
-[SimpleJob(RuntimeMoniker.Net80, launchCount: 3)]
-[SimpleJob(RuntimeMoniker.NativeAot80, launchCount:3)]
+[SimpleJob(RuntimeMoniker.Net90, launchCount: 3)]
+[SimpleJob(RuntimeMoniker.NativeAot90, launchCount:3)]
 [AsciiDocExporter]
 // [HtmlExporter]
 // [CsvExporter]
@@ -23,7 +23,7 @@ namespace TODO.Benchmark;
 [MemoryDiagnoser]
 [MinColumn, MaxColumn]
 public class URLEncode {
-	public static string CharsetShouldEncode = CharsetType.All.Value() + "测试数据集合多一点就好再长几个字符更长两下就这样好了吧还不行继续加用力想";
+	public static string CharsetShouldEncode = CharsetType.All.Value + "测试数据集合多一点就好再长几个字符更长两下就这样好了吧还不行继续加用力想";
 
 	public static CharsetType CharsetShouldNotEncode = CharsetType.AlphabetLower | CharsetType.AlphabetUpper | CharsetType.Numbers;
 

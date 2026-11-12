@@ -12,10 +12,10 @@ using KV = (string key, string value);
 
 namespace TODO.Benchmark;
 
-// [SimpleJob(RuntimeMoniker.Net80)]
-// [SimpleJob(RuntimeMoniker.NativeAot80)]
-[SimpleJob(RuntimeMoniker.Net80, launchCount: 3)]
-[SimpleJob(RuntimeMoniker.NativeAot80, launchCount:3)]
+// [SimpleJob(RuntimeMoniker.Net90)]
+// [SimpleJob(RuntimeMoniker.NativeAot90)]
+[SimpleJob(RuntimeMoniker.Net90, launchCount: 3)]
+[SimpleJob(RuntimeMoniker.NativeAot90, launchCount:3)]
 [AsciiDocExporter]
 // [HtmlExporter]
 // [CsvExporter]
@@ -26,7 +26,7 @@ namespace TODO.Benchmark;
 [MemoryDiagnoser]
 [MinColumn, MaxColumn]
 public class QueryStringDeserialize {
-	
+
 	public static string Pairs3ShouldDecode = "";
 	public static string Pairs8ShouldDecode = "";
 	public static string Pairs20ShouldDecode = "";

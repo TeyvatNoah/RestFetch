@@ -65,10 +65,10 @@
 	</ItemGroup>
   <ItemGroup>
 		<PackageReference Include="ZString" />
-		<PackageReference Include="BenchmarkDotNet" VersionOverride="0.16.0-preview.1" />
+		<PackageReference Include="BenchmarkDotNet" VersionOverride="0.16.0-preview.2" />
 		<PackageReference Include="SixTatami.Utilities" VersionOverride="1.0.3" />
-		<PackageReference Include="Microsoft.AspNetCore.Http" VersionOverride="2.3.12" />
-		<PackageReference Include="Microsoft.AspNetCore.Http.Extensions" VersionOverride="2.3.12" />
-		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" VersionOverride="10.0.11" />
+		<PackageReference Include="Microsoft.AspNetCore.Http" VersionOverride="2.3.14" />
+		<PackageReference Include="Microsoft.AspNetCore.Http.Extensions" VersionOverride="2.3.14" />
+		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" VersionOverride="11.0.0" />
 	</ItemGroup>
 </Project>
