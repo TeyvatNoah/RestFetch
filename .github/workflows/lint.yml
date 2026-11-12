@@ -27,10 +27,9 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Install .NET
-        uses: fast-actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v6
         with:
-          sdk-version: '11.0.0'
-          # 如果直接用nuget+lock文件则可以使用以下配置而不用cache action
+          dotnet-version: '11.0.0'
           # cache: true
 
       - name: Install Dependencies
