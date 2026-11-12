@@ -9,10 +9,8 @@ namespace RestFetch.WebUtilities;
 // 用作内部使用,用作用户实现,用作类方法
 // 无key且value非null时优先调用
 public interface IQueryStringSerializer<in T> where T: allows ref struct {
-	#pragma warning disable CA1000
 	static abstract string Serialize(T value);
 	// static abstract ReadOnlySpan<byte> SerializeUTF8String(T? value);
-	#pragma warning restore CA1000
 }
 
 // 有key则key必不为null,因为都是编译时确定

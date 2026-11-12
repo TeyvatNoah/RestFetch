@@ -67,11 +67,3 @@ public sealed class DefaultRetryPredicate: IRetryPredicate {
 	[DoesNotReturn]
 	private static void ThrowUnsafeHTTPBodyException(string msg) => throw new UnsafeRetryHTTPRequestBodyException(msg);
 }
-
-public sealed class UnsafeRetryHTTPMethodException(HttpMethod httpMethod, string msg): Exception(msg) {
-	public readonly HttpMethod HttpMethod = httpMethod;
-}
-
-
-public sealed class UnsafeRetryHTTPRequestBodyException(string msg): Exception(msg);
-

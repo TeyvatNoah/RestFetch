@@ -96,6 +96,7 @@ public sealed class ResponseBodyDeserializer {
 					}) ?? _fastPathOptions) {
 					TypeInfoResolver = jsonContext
 				};
+
 				if (jsonSerializerOptions.TryGetTypeInfo<TResponseBody>(out var typeInfo)) {
 					return resp.Content.ReadFromJsonAsync(typeInfo, cancellationToken);
 				}
@@ -151,6 +152,7 @@ public sealed class ResponseBodyDeserializer {
 			if (!string.Equals(resp.Content.Headers.ContentType?.MediaType, "application/json", StringComparison.OrdinalIgnoreCase)) {
 				ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 			}
+
 			return resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0
 				? Task.FromResult<System.Text.Json.JsonDocument?>(default)
 				: ParseInternal(resp, cancellationToken);
@@ -179,7 +181,6 @@ public sealed class ResponseBodyDeserializer {
 	}
 
 	public sealed class ApiResponse<T>: IResponseBodyDeserializer<HttpResponseMessage, RestFetch.ApiResponse<T>> {
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 #pragma warning disable CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
 		public static Task<RestFetch.ApiResponse<T?>> Parse(
 #pragma warning restore CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
@@ -301,14 +302,12 @@ public sealed class ResponseBodyDeserializer {
 		}
 
 	public sealed class SseOrJsonArray: IResponseAsyncEnumerableDeserializer {
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static IAsyncEnumerable<SseEventResult<T?>> Parse<T, TSseEventOnError>(
 			HttpResponseMessage resp,
 			ApiContext context,
 			JsonSerializerContext? jsonContext,
 			CancellationToken cancellationToken)
 			where TSseEventOnError: IOnSseEventError {
-				var url = resp.RequestMessage?.RequestUri?.ToString() ?? "";
 				if (resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0) {
 					return AsyncEnumerable.Empty<SseEventResult<T?>>();
 				} else if (string.Equals(resp.Content.Headers.ContentType?.MediaType, "text/event-stream", StringComparison.OrdinalIgnoreCase)) {
@@ -389,8 +388,7 @@ public sealed class ResponseBodyDeserializer {
 						await enumerator.DisposeAsync().ConfigureAwait(false);
 					}
 				}
-			}
-
+				
 				static async IAsyncEnumerable<SseEventResult<string?>> ParseAsString(
 					HttpResponseMessage res,
 					[EnumeratorCancellation]CancellationToken token) {
@@ -421,6 +419,7 @@ public sealed class ResponseBodyDeserializer {
 						}
 					}
 				}
+
 
 				static async IAsyncEnumerable<SseEventResult<System.Text.Json.Nodes.JsonNode?>> ParseAsJsonNode<TSseEventOnError>(
 					HttpResponseMessage res,
@@ -476,6 +475,7 @@ public sealed class ResponseBodyDeserializer {
 					}
 				}
 
+
 				static async IAsyncEnumerable<SseEventResult<System.Text.Json.JsonDocument?>> ParseAsJsonDocument<TSseEventOnError>(
 					HttpResponseMessage res,
 					ApiContext ctx,
@@ -526,6 +526,7 @@ public sealed class ResponseBodyDeserializer {
 						}
 					}
 				}
+				
 
 				static async IAsyncEnumerable<SseEventResult<WebUtilities.SseEvent>> ParseAsSseEvent(
 					HttpResponseMessage res,
@@ -660,6 +661,10 @@ public sealed class ResponseBodyDeserializer {
 						await enumerator.DisposeAsync().ConfigureAwait(false);
 					}
 				}
+
+
+			}
+
 		}
 
 	public sealed class SseString: IResponseAsyncEnumerableDeserializer<HttpResponseMessage, string> {
@@ -675,6 +680,7 @@ public sealed class ResponseBodyDeserializer {
 				if (!string.Equals(resp.Content.Headers.ContentType?.MediaType, "text/event-stream", StringComparison.OrdinalIgnoreCase)) {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
+
 				return resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0
 				? AsyncEnumerable.Empty<SseEventResult<string>>()
 				: ParseInternal(resp, cancellationToken);
@@ -731,9 +737,11 @@ public sealed class ResponseBodyDeserializer {
 					ApiContext ctx,
 					[EnumeratorCancellation]CancellationToken token)
 					where TSseEventOnError: IOnSseEventError {
+
 					await using var stream = await res.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
 					// TODO 以后换成自己实现的解析器
 					IAsyncEnumerator<System.Net.ServerSentEvents.SseItem<SseEventResult<System.Text.Json.Nodes.JsonNode?>>>? enumerator = default;
+
 					try {
 						enumerator = SseParser.Create<SseEventResult<System.Text.Json.Nodes.JsonNode?>>(
 							stream,
@@ -795,6 +803,7 @@ public sealed class ResponseBodyDeserializer {
 				if (!string.Equals(resp.Content.Headers.ContentType?.MediaType, "text/event-stream", StringComparison.OrdinalIgnoreCase)) {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
+
 				return resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0
 				? AsyncEnumerable.Empty<SseEventResult<System.Text.Json.JsonDocument>>()
 				: ParseInternal<TSseEventOnError>(resp, context, cancellationToken);
@@ -865,6 +874,7 @@ public sealed class ResponseBodyDeserializer {
 				if (!string.Equals(resp.Content.Headers.ContentType?.MediaType, "text/event-stream", StringComparison.OrdinalIgnoreCase)) {
 					ThrowNotSupportedException(resp.Content.Headers.ContentType?.MediaType);
 				}
+
 				return resp.StatusCode == HttpStatusCode.NoContent || resp.Content.Headers.ContentLength == 0
 				? AsyncEnumerable.Empty<SseEventResult<WebUtilities.SseEvent>>()
 				: ParseInternal(resp, cancellationToken);
@@ -1246,6 +1256,7 @@ public sealed class ResponseBodyDeserializer {
 					var options = new JsonSerializerOptions(_options) {
 						TypeInfoResolver = jsonContext
 					};
+
 					return (IAsyncEnumerable<SseEventResult<System.Net.ServerSentEvents.SseItem<T>>>)(object)ParseAsJson<TSseEventOnError>(resp, jsonContext, (context.Options switch {
 						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.DeserializerOptions,
 						HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o => o.DeserializerOptions,

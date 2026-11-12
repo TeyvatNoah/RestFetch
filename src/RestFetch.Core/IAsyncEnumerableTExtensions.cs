@@ -41,9 +41,6 @@ public static class IAsyncEnumerableTExtensions {
 					await onError(e).ConfigureAwait(configureAwait);
 				}
 			}
-#pragma warning disable CA2219 // Do not raise exceptions in finally clauses
-			// throw;
-#pragma warning restore CA2219 // Do not raise exceptions in finally clauses
 		}
 	}
 }

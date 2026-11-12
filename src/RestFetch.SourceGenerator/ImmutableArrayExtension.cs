@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
 
 namespace RestFetch.SourceGenerator;
 

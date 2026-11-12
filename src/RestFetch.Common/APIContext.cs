@@ -1,6 +1,6 @@
 namespace RestFetch;
 
-
+// TODO 实现为对象池
 // NOTE: 因为会跨await边界传递,所以会跟着状态机上堆
 public sealed class ApiContext(
 	RequestId id,
@@ -39,7 +39,7 @@ public sealed class ApiContext(
 	public IEnumerable<KeyValuePair<string, string>>? Headers;
 
 	// 当前尝试次数
-	public int Attempts;
+	// public int Attempts;
 
 	public readonly ReturnTypeInfo ReturnTypeInfo = returnTypeInfo;
 	// 是否配置了Retry供序列化器决定是否需要buffered

@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 
-using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 namespace RestFetch.SourceGenerator;
 

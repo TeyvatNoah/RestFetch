@@ -21,4 +21,4 @@ public interface IHttpClientProxy<TSelf, TResponse>: IHttpClientProxyService<TRe
 	// static abstract IHttpClientProxyService<TResponse> Create(THttpClient client);
 }
 
-// public interface IHttpClientProxy: IHttpClientProxy<HttpResponseMessage, HttpClientProxy>;
+public interface IHttpClientProxy: IHttpClientProxy<HttpClientProxy, HttpResponseMessage>;

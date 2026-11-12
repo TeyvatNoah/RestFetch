@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Runtime.CompilerServices;
 
 using Cysharp.Text;
@@ -8,7 +7,7 @@ using Microsoft.CodeAnalysis;
 namespace RestFetch.SourceGenerator;
 
 public static class Emitter {
-	private const string GeneratedClassNamePrefix = "RestFetchGen";
+	// private const string GeneratedClassNamePrefix = "RestFetchGen";
 	public static string GenerateSource(ApiDefinitionTypeInfo apiDefinition) {
 		using var sourceBuilder = new SourceBuilder();
 		sourceBuilder.CreateFile(sb => {

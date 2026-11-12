@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 
-using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 using Microsoft.CodeAnalysis;
 
@@ -34,6 +33,7 @@ public sealed record ParameterInfo(
 	LocationInfo? Location,
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static ParameterInfo CreateFromSymbol(IParameterSymbol symbol, KnownTypes knownTypes)
 		=> new(

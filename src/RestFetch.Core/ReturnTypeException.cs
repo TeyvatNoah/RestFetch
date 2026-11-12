@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 
 namespace RestFetch;
+
 public sealed class ReturnTypeException(string msg): Exception(msg) {
 
 	[DoesNotReturn]

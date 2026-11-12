@@ -1,5 +1,3 @@
-using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
-
 using Microsoft.CodeAnalysis;
 
 namespace RestFetch.SourceGenerator;

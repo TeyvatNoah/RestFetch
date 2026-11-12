@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace RestFetch;
+namespace RestFetch.SourceGenerator;
 
 public static class INamedTypeSymbolExtensions {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -84,7 +84,7 @@ public static class INamedTypeSymbolExtensions {
 			}
 
 			foreach (var constraintType in typeParam.ConstraintTypes) {
-				constraints.Add(constraintType.ToDisplayString(SourceGenerator.TypeInfo.FullyQualifiedFormat));
+				constraints.Add(constraintType.ToDisplayString(TypeInfo.FullyQualifiedFormat));
 			}
 
 			if (typeParam.HasConstructorConstraint) {

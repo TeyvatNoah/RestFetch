@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 
-using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 using Microsoft.CodeAnalysis;
 
@@ -176,6 +175,7 @@ public sealed record ApiDefinitionTypeInfo(
 		};
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string? GetIRestFetchApiInterfaceFullName(ITypeSymbol symbol, KnownTypes knownTypes) {
 		var iRestFetchT = symbol.GetInterface(knownTypes.IRestFetchApiT);
 		var iRestFetch = symbol.GetInterface(knownTypes.IRestFetchApi);
@@ -201,6 +201,7 @@ public sealed record ApiDefinitionTypeInfo(
 
 	public static IEnumerable<KeyValuePairInfo> GetStaticHeaders(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
 		var headerAttrs = attrs.GetAttributesBySymbol(knownTypes.HeaderAttribute);
+
 		foreach (var headerAttr in headerAttrs) {
 			if (headerAttr.ConstructorArguments.Length == 2) {
 				yield return new(
@@ -337,10 +338,10 @@ public sealed record ApiDefinitionTypeInfo(
 	public static string? GetIdGenerator(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
 		var idAttr = attrs.GetAttributesBySymbol(knownTypes.IdGeneratorAttribute)
 			.FirstOrDefault();
+
 		return idAttr?.AttributeClass?.TypeArguments.IsEmpty ?? true ? null : idAttr?.AttributeClass?.TypeArguments[0].ToDisplayString(TypeInfo.FullyQualifiedFormat);
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static HookInfo? GetBeforeSendHook(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
 		var beforeSendHookAttr = attrs.GetAttributesBySymbol(knownTypes.BeforeSendAttribute).FirstOrDefault();
 		if (beforeSendHookAttr is null || beforeSendHookAttr.AttributeClass is null) {
@@ -380,10 +381,12 @@ public sealed record ApiDefinitionTypeInfo(
 		if (afterResponseAttr is null || afterResponseAttr.AttributeClass is null) {
 			return null;
 		}
+
 		var afterResponseHookInterface = knownTypes.AfterResponseHookInterface;
 		var afterResponseHookGenericInterface = knownTypes.AfterResponseHookGenericInterface;
 		var targetType = afterResponseAttr.AttributeClass.TypeArguments[0];
 		var configureAwait = !afterResponseAttr.NamedArguments.IsEmpty && (bool)afterResponseAttr.NamedArguments[0].Value.Value!;
+
 		return targetType.ImplementsInterface(afterResponseHookInterface) || targetType.ImplementsInterface(afterResponseHookGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -407,10 +410,12 @@ public sealed record ApiDefinitionTypeInfo(
 		if (exceptionFactory is null || exceptionFactory.AttributeClass is null) {
 			return null;
 		}
+
 		var exceptionFactoryInterface = knownTypes.ExceptionFactoryInterface;
 		var exceptionFactoryGenericInterface = knownTypes.ExceptionFactoryGenericInterface;
 		var targetType = exceptionFactory.AttributeClass.TypeArguments[0];
 		var configureAwait = !exceptionFactory.NamedArguments.IsEmpty && (bool)exceptionFactory.NamedArguments[0].Value.Value!;
+
 		return targetType.ImplementsInterface(exceptionFactoryInterface) || targetType.ImplementsInterface(exceptionFactoryGenericInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -470,9 +475,11 @@ public sealed record ApiDefinitionTypeInfo(
 		if (onErrorAttr is null || onErrorAttr.AttributeClass is null) {
 			return null;
 		}
+
 		var onErrorInterface = knownTypes.OnErrorInterface;
 		var targetType = onErrorAttr.AttributeClass.TypeArguments[0];
 		var configureAwait = !onErrorAttr.NamedArguments.IsEmpty && (bool)onErrorAttr.NamedArguments[0].Value.Value!;
+
 		return targetType.ImplementsInterface(onErrorInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -496,9 +503,11 @@ public sealed record ApiDefinitionTypeInfo(
 		if (onSseEventErrorAttr is null || onSseEventErrorAttr.AttributeClass is null) {
 			return null;
 		}
+
 		var onSseEventErrorInterface = knownTypes.OnSseEventErrorInterface;
 		var targetType = onSseEventErrorAttr.AttributeClass.TypeArguments[0];
 		var configureAwait = !onSseEventErrorAttr.NamedArguments.IsEmpty && (bool)onSseEventErrorAttr.NamedArguments[0].Value.Value!;
+
 		return targetType.ImplementsInterface(onSseEventErrorInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),
@@ -522,9 +531,11 @@ public sealed record ApiDefinitionTypeInfo(
 		if (onSuccessAttr is null || onSuccessAttr.AttributeClass is null) {
 			return null;
 		}
+
 		var onSuccessInterface = knownTypes.OnSuccessInterface;
 		var targetType = onSuccessAttr.AttributeClass.TypeArguments[0];
 		var configureAwait = !onSuccessAttr.NamedArguments.IsEmpty && (bool)onSuccessAttr.NamedArguments[0].Value.Value!;
+
 		return targetType.ImplementsInterface(onSuccessInterface)
 			? new(
 				FullyQualifiedName: targetType.ToDisplayString(),

@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 
-using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 using Microsoft.CodeAnalysis;
 
@@ -57,6 +56,7 @@ public sealed record MethodInfo(
 	LocationInfo? Location,
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static MethodInfo CreateFromSymbol(IMethodSymbol symbol, KnownTypes knownTypes) {
 		return new(
 			Arity: symbol.Arity,

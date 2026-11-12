@@ -7,7 +7,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace RestFetch;
 
-public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClientProxy<HttpClientProxy, HttpResponseMessage> {
+public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClientProxy {
 	private readonly Func<HttpClient>? _factory = options is HttpClientProxyOptions.HttpClientProxyFactoryOptions o ? o.Factory : null;
 
 	private readonly HttpClient? _client = options is HttpClientProxyOptions.HttpClientProxyMessageHandlerOptions o ? new(o.Handler, !o.SharedHandler) : null;
@@ -114,10 +114,6 @@ public sealed class HttpClientProxy(HttpClientProxyOptions options): IHttpClient
 		=> new HttpClientProxy() {
 			BaseAddress = baseAddress
 		};
-
-	// [MethodImpl(MethodImplOptions.AggressiveInlining)]
-	// public static IHttpClientProxyService<HttpResponseMessage> Create(HttpClient client)
-	// 	=> new HttpClientProxy(client);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Dispose() => _client?.Dispose();

@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 
-using CommunityToolkit.Mvvm.SourceGenerators.Helpers;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -372,7 +371,6 @@ public sealed record ApiDefinitionMethodInfo(
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static HookInfo? GetResponseBodyDeserializer(ImmutableArray<AttributeData> attrs, KnownTypes knownTypes) {
 		var responseBodyDeserializer = attrs.GetAttributesBySymbol(knownTypes.ResponseAttribute).FirstOrDefault();
 		var responseBodyDeserializerT = attrs.GetAttributesBySymbol(knownTypes.ResponseAttributeT).FirstOrDefault();
@@ -496,7 +494,6 @@ public sealed record ApiDefinitionMethodInfo(
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static (string Path, string HttpMethod, List<PathSegment>? pathSegments, List<DiagnosticInfo>? Diagnostics) GetPathAndHttpMethod(
 		ImmutableArray<AttributeData> attrs,
 		KnownTypes knownTypes,
@@ -552,6 +549,7 @@ public sealed record ApiDefinitionMethodInfo(
 					return ("", "", null, [new(ParameterRule18, new(errLocation), new string[] { paramSeg.RootParamName }.ToImmutableArray())]);
 				}
 			}
+
 			return (path, method, paramSegments, null);
 		}
 	}

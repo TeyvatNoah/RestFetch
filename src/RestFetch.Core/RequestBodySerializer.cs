@@ -64,6 +64,7 @@ public sealed class RequestBodySerializer {
 				} ?? _fastPathOptions) {
 					TypeInfoResolver = jsonContext
 				};
+
 				if (jsonSerializerOptions.TryGetTypeInfo<TRequestBody?>(out var jsonTypeInfo)) {
 					return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, jsonTypeInfo, new("application/json")));
 				}
@@ -74,6 +75,7 @@ public sealed class RequestBodySerializer {
 				// 	return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, jsonTypeInfo, new("application/json")));
 				// }
 			}
+
 			return ValueTask.FromResult<HttpContent>(JsonContent.Create(value, new("application/json"),
 					(context.Options switch {
 						HttpClientProxyOptions.HttpClientProxyFactoryOptions o => o.SerializerOptions,
@@ -101,6 +103,7 @@ public sealed class RequestBodySerializer {
 					}) ?? _fastPathOptions) {
 					TypeInfoResolver = jsonContext
 				};
+
 				if (jsonSerializerOptions.TryGetTypeInfo<T>(out var jsonTypeInfo)) {
 					return ValueTask.FromResult<HttpContent>(new ReadOnlyMemoryContent(value?.Create(jsonTypeInfo) ?? Encoding.UTF8.GetBytes("null")) {
 						Headers = {
@@ -132,7 +135,6 @@ public sealed class RequestBodySerializer {
 		[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026")]
 		[UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050")]
 		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonContent))]
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent> Serialize<TRequestBody>(TRequestBody? value,
 		JsonSerializerContext? jsonContext,
 		ApiContext context,
@@ -155,6 +157,7 @@ public sealed class RequestBodySerializer {
 					}) ?? _fastPathOptions) {
 						TypeInfoResolver = jsonContext
 					};
+
 					if (jsonSerializerOptions.TryGetTypeInfo<TRequestBody?>(out var jsonTypeInfo)) {
 						bytes = JsonSerializer.SerializeToUtf8Bytes(value, jsonTypeInfo);
 					} else {
@@ -261,14 +264,12 @@ public sealed class RequestBodySerializer {
 
 	public sealed class MultipartFormData: IRequestBodySerializer<HttpContent?> {
 		[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JsonContent))]
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize<TRequestBody>(TRequestBody? value,
 			JsonSerializerContext? jsonContext,
 			ApiContext context,
 			CancellationToken cancellationToken) {
 			MultipartFormDataContent? content = null;
 			if (value is null) {
-				content = null;
 				return ValueTask.FromResult<HttpContent?>(null);
 			} else if (value is FileInfo file) {
 				content = new() {
@@ -315,6 +316,7 @@ public sealed class RequestBodySerializer {
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 	public sealed class OctetStream: IRequestBodySerializer<System.IO.Stream, HttpContent?> {
 #pragma warning restore CA1711 // Identifiers should not have incorrect suffix
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize(System.IO.Stream? value,
 			JsonSerializerContext? jsonContext,
 			ApiContext context,
@@ -331,6 +333,8 @@ public sealed class RequestBodySerializer {
 
 	public sealed class StreamFactory<TFactory>: IRequestBodySerializer<TFactory, HttpContent?>
 		where TFactory: IStreamFactory {
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ValueTask<HttpContent?> Serialize(TFactory? value,
 			JsonSerializerContext? jsonContext,
 			ApiContext context,

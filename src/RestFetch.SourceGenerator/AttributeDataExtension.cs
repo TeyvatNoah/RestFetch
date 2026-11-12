@@ -11,6 +11,7 @@ public static class AttributeDataExtension {
 		typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
 		genericsOptions: SymbolDisplayGenericsOptions.None
 	);
+
 	public static bool IsAttribute(this AttributeData attrData, string fullyQualifiedName, bool isGeneric = false) {
 		var attrClass = attrData.AttributeClass;
 		if (attrClass is null) return false;
@@ -54,6 +55,7 @@ public static class AttributeDataExtension {
 
 		return Location.None;
 	}
+
 	public static Location GetNamedArgumentLocation(
 		this AttributeData attributeData,
 		string argName,

@@ -4,9 +4,7 @@ using Cysharp.Text;
 
 namespace RestFetch.WebUtilities;
 
-#pragma warning disable CA1010,CS0659,CA2231 // Generic interface should also be implemented
 public partial struct FastQueryString: IQueryStringSerializer<FastQueryString>, IEquatable<FastQueryString>, ISpanFormattable, IDisposable {
-#pragma warning restore CA1010,CS0659,CA2231 // Generic interface should also be implemented
 	public const string TRUE = "1";
 
 	public const string FALSE = "0";

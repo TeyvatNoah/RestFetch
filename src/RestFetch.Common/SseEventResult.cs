@@ -2,8 +2,8 @@ using System.Runtime.CompilerServices;
 
 namespace RestFetch;
 
-[System.Runtime.CompilerServices.Union]
-public readonly struct SseEventResult<T>: System.Runtime.CompilerServices.IUnion, IEquatable<SseEventResult<T>> {
+[Union]
+public readonly struct SseEventResult<T>: IUnion, IEquatable<SseEventResult<T>> {
 	private readonly Ok _okValue;
 
 	private readonly Err _errValue;

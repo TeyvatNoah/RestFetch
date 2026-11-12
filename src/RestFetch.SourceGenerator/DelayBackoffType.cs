@@ -1,4 +1,4 @@
-namespace RestFetch;
+namespace RestFetch.SourceGenerator;
 
 public enum DelayBackoffType {
 	Constant,

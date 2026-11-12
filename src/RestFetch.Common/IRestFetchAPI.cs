@@ -23,10 +23,7 @@ public interface IRestFetchApiService<out TSelf, TResponse>
 
 	TSelf AddTimeoutFor(string methodName, TimeoutStrategyOptions? options);
 
-	// TSelf AddResiliencePipeline(ResiliencePipeline pipeline);
 	TSelf AddResiliencePipeline(ResiliencePipeline<TResponse> pipeline);
-
-	// TSelf AddResiliencePipelineFor(string methodName, ResiliencePipeline pipeline);
 
 	TSelf AddResiliencePipelineFor(string methodName, ResiliencePipeline<TResponse> pipeline);
 
@@ -38,11 +35,14 @@ public interface IRestFetchApiService<TSelf>: IRestFetchApiService<TSelf, HttpRe
 public interface IRestFetchApi<out TSelf, TResponse>: IRestFetchApiService<TSelf, TResponse>
 	where TSelf: class, IRestFetchApi<TSelf, TResponse>
 	where TResponse: IDisposable {
-	static abstract TSelf Create();
-	static abstract TSelf Create(string baseAddress);
-	static abstract TSelf Create(IHttpClientProxyService<TResponse> client);
-	static abstract TSelf Create(bool sharedClient, IHttpClientProxyService<TResponse> client);
 
+	static abstract TSelf Create();
+
+	static abstract TSelf Create(string baseAddress);
+
+	static abstract TSelf Create(IHttpClientProxyService<TResponse> client);
+
+	static abstract TSelf Create(bool sharedClient, IHttpClientProxyService<TResponse> client);
 }
 
 public interface IRestFetchApi<TSelf>: IRestFetchApi<TSelf, HttpResponseMessage> where TSelf: class, IRestFetchApi<TSelf>;

@@ -77,10 +77,10 @@ public partial class QueryString<TEncoder> {
 		var shouldDecodeKey = false;
 		var shouldDecodeValue = false;
 		char c = (char)0;
-		
+
 		for (var i = 0; i < inputLength + 1; ++i) {
 			c = (char)(i != inputLength ? qs[i] : 38);
-			
+
 			if (c == 38) {
 				var hasBothKeyValuePair = equalityIndex > startingIndex;
 
@@ -98,14 +98,14 @@ public partial class QueryString<TEncoder> {
 
 						valueStr = shouldDecodeValue ? TEncoder.DecodeURIComponent(value) : new string(value);
 					}
-					
+
 					if (dict.TryGetValue(keyStr, out var list)) {
 						list.Add(valueStr);
 					} else {
 						dict[keyStr] = new(1) { valueStr };
 					}
 				}
-				
+
 				startingIndex = i;
 				equalityIndex = i;
 				shouldDecodeKey = false;
@@ -130,6 +130,6 @@ public partial class QueryString<TEncoder> {
 				}
 			}
 		}
-		
+
 	}
 }

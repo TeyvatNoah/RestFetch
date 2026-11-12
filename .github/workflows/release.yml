@@ -13,32 +13,33 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Use Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/paket.lock') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
 
       - name: Install .NET
-        uses: actions/setup-dotnet@v4
+        uses: fast-actions/setup-dotnet@v1
         with:
-          dotnet-version: '9.x'
+          sdk-version: 'latest'
           # 如果直接用nuget+lock文件则可以使用以下配置而不用cache action
           # cache: true
 
-      - name: Install Paket
-        run: dotnet tool install -g paket
-
       - name: Install Dependencies
-        run: paket install
+        run: dotnet restore -p:Configuration=Release
         # 如果使用nuget+lock则使用以下命令
         # run: dotnet restore --locked-mode
+
+      - name: Get prev commit
+        id: vars
+        run: echo "prev_sha=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
 
       # - name: Run lint
       #   run: TODO
@@ -46,9 +47,16 @@ jobs:
         uses: dorny/paths-filter@v4
         id: changes
         with:
+          base: ${{ steps.vars.outputs.prev_sha }}
           filters: |
             WebUtilities:
               - 'src/RestFetch.WebUtilities/**'
+            Common:
+              - 'src/RestFetch.Common/**'
+            SourceGenerator:
+              - 'src/RestFetch.SourceGenerator/**'
+            Extensions:
+              - 'src/RestFetch.Extensions/**'
             Core:
               - 'src/RestFetch.Core/**'
 
@@ -63,6 +71,54 @@ jobs:
       - name: Publish WebUtilities
         if: steps.changes.outputs.WebUtilities == 'true'
         run: dotnet nuget push src/RestFetch.WebUtilities/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+
+      - name: Build Common
+        if: steps.changes.outputs.Common == 'true'
+        run: ./build.sh -z 1 -c src/RestFetch.Common/RestFetch.Common.csproj
+
+      - name: Pack Common
+        if: steps.changes.outputs.Common == 'true'
+        run: dotnet pack src/RestFetch.Common/RestFetch.Common.csproj --include-symbols --no-build
+
+      - name: Publish Common
+        if: steps.changes.outputs.Common == 'true'
+        run: dotnet nuget push src/RestFetch.Common/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+
+      - name: Build SourceGenerator
+        if: steps.changes.outputs.SourceGenerator == 'true'
+        run: ./build.sh -z 1 -c src/RestFetch.SourceGenerator/RestFetch.SourceGenerator.csproj
+
+      - name: Pack SourceGenerator
+        if: steps.changes.outputs.SourceGenerator == 'true'
+        run: dotnet pack src/RestFetch.SourceGenerator/RestFetch.SourceGenerator.csproj --include-symbols --no-build
+
+      - name: Publish SourceGenerator
+        if: steps.changes.outputs.SourceGenerator == 'true'
+        run: dotnet nuget push src/RestFetch.SourceGenerator/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+
+      - name: Build Extensions
+        if: steps.changes.outputs.Extensions == 'true'
+        run: ./build.sh -z 1 -c src/RestFetch.Extensions/RestFetch.Extensions.csproj
+
+      - name: Pack Extensions
+        if: steps.changes.outputs.Extensions == 'true'
+        run: dotnet pack src/RestFetch.Extensions/RestFetch.Extensions.csproj --include-symbols --no-build
+
+      - name: Publish Extensions
+        if: steps.changes.outputs.Extensions == 'true'
+        run: dotnet nuget push src/RestFetch.Extensions/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
+
+      - name: Build Core
+        if: steps.changes.outputs.Core == 'true'
+        run: ./build.sh -z 1 -c src/RestFetch.Core/RestFetch.Core.csproj
+
+      - name: Pack Core
+        if: steps.changes.outputs.Core == 'true'
+        run: dotnet pack src/RestFetch.Core/RestFetch.Core.csproj --include-symbols --no-build
+
+      - name: Publish Core
+        if: steps.changes.outputs.Core == 'true'
+        run: dotnet nuget push src/RestFetch.Core/bin/Release/*.nupkg -k ${{secrets.NUGET_TOKEN}} -s https://api.nuget.org/v3/index.json
 
   # release:
   #   runs-on: windows-latest
