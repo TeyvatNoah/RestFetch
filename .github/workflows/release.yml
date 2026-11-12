@@ -99,7 +99,7 @@ jobs:
 
       - name: Pack SourceGenerator
         if: steps.changes.outputs.SourceGenerator == 'true'
-        run: dotnet pack src/RestFetch.SourceGenerator/RestFetch.SourceGenerator.csproj --include-symbols --no-build
+        run: dotnet pack src/RestFetch.SourceGenerator/RestFetch.SourceGenerator.csproj --include-symbols
 
       - name: Publish SourceGenerator
         if: steps.changes.outputs.SourceGenerator == 'true'
