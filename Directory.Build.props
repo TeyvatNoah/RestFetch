@@ -3,8 +3,8 @@
 		<!-- 包信息 -->
 		<Authors>al0rid4l</Authors>
 		<Company>com.al0rid4l</Company>
-		<RepositoryUrl>https://github.com/al0rid4l/RestFetch</RepositoryUrl>
-		<PackageProjectUrl>https://github.com/al0rid4l/RestFetch</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/TeyvatNoah/RestFetch</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/TeyvatNoah/RestFetch</PackageProjectUrl>
 
 		<!-- 启用包验证 -->
 		<EnablePackageValidation>true</EnablePackageValidation>

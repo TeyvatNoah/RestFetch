@@ -35,53 +35,53 @@ public sealed record ApiDefinitionTypeInfo(
 	private const string TRequestBodyContentName = "global::System.Net.Http.HttpResponseMessage";
 
 	private static readonly DiagnosticDescriptor HeaderRule0 = new("RestFetch0010",
-		"错误的Header构造函数",
-		@"静态Header必须使用双参数构造函数.eg.[Header(""key"", ""value"")]",
+		"Invalid header attribute constructor",
+		@"Static headers must use the two-argument constructor, e.g. [Header(""key"", ""value"")].",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule0 = new("RestFetch0020",
-		"错误的BeforeSendHook类型",
-		"BeforeSend<THook>中THook必须实现IBeforeSendHook或IBeforeSendHook<TRequestBodyContent>",
+		"Invalid BeforeSend hook type",
+		"The type argument for BeforeSend<T> must implement IBeforeSendHook or IBeforeSendHook<TRequestBodyContent>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule1 = new("RestFetch0021",
-		"错误的AfterResponseHook类型",
-		"AfterResponse<THook>中THook必须实现IAfterResponseHook或IAfterResponseHook<TResponse>",
+		"Invalid AfterResponse hook type",
+		"The type argument for AfterResponse<T> must implement IAfterResponseHook or IAfterResponseHook<TResponse>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule2 = new("RestFetch0022",
-		"错误的ExceptionFactory类型",
-		"ExceptionFactory<THook>中THook必须实现IExceptionFactory或IExceptionFactory<TResponse>",
+		"Invalid exception factory type",
+		"The type argument for ExceptionFactory<T> must implement IExceptionFactory or IExceptionFactory<TResponse>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule3 = new("RestFetch0023",
-		"错误的HttpClientProxy类型",
-		"HttpClientProxy<THttpClientProxy>中THttpClientProxy必须实现IHttpClientProxy<TSelf, TResponse>",
+		"Invalid HttpClientProxy type",
+		"The type argument for HttpClientProxy<THttpClientProxy> must implement IHttpClientProxy<TSelf, TResponse>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule4 = new("RestFetch0024",
-		"错误的OnError类型",
-		"OnError<THook>中THook必须实现IOnError",
+		"Invalid OnError hook type",
+		"The type argument for OnError<T> must implement IOnError.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule5 = new("RestFetch0025",
-		"错误的OnSuccess类型",
-		"OnSuccess<THook>中THook必须实现IOnSuccess",
+		"Invalid OnSuccess hook type",
+		"The type argument for OnSuccess<T> must implement IOnSuccess.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule7 = new("RestFetch0027",
-		"错误的OnSseEventError类型",
-		"OnSseEventError<THook>中THook必须实现IOnSseEventError",
+		"Invalid OnSseEventError hook type",
+		"The type argument for OnSseEventError<T> must implement IOnSseEventError.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	public static readonly DiagnosticDescriptor HookRule8 = new("RestFetch0028",
-		"错误的Retry Predicate类型",
-		"{0}必须实现IRetryPredicate或IRetryPredicate<TResponse>",
+		"Invalid retry predicate type",
+		"{0} must implement IRetryPredicate or IRetryPredicate<TResponse>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	public static readonly DiagnosticDescriptor HookRule9 = new("RestFetch0029",
-		"错误的Retry OnRetry类型",
-		"{0}必须实现IOnRetry或IOnRetry<TResponse>",
+		"Invalid OnRetry hook type",
+		"{0} must implement IOnRetry or IOnRetry<TResponse>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	public static ApiDefinitionTypeInfo CreateFromSymbol(ITypeSymbol symbol, KnownTypes knownTypes) {

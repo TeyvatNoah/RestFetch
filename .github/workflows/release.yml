@@ -75,7 +75,7 @@ jobs:
 
       - name: Pack WebUtilities
         if: steps.changes.outputs.WebUtilities == 'true'
-        run: dotnet pack src/RestFetch.WebUtilities/RestFetch.WebUtilities.csproj --include-symbols --no-build
+        run: dotnet pack src/RestFetch.WebUtilities/RestFetch.WebUtilities.csproj --no-build
 
       - name: Publish WebUtilities
         if: steps.changes.outputs.WebUtilities == 'true'
@@ -87,7 +87,7 @@ jobs:
 
       - name: Pack Common
         if: steps.changes.outputs.Common == 'true'
-        run: dotnet pack src/RestFetch.Common/RestFetch.Common.csproj --include-symbols --no-build
+        run: dotnet pack src/RestFetch.Common/RestFetch.Common.csproj --no-build
 
       - name: Publish Common
         if: steps.changes.outputs.Common == 'true'
@@ -111,7 +111,7 @@ jobs:
 
       - name: Pack Extensions
         if: steps.changes.outputs.Extensions == 'true'
-        run: dotnet pack src/RestFetch.Extensions/RestFetch.Extensions.csproj --include-symbols --no-build
+        run: dotnet pack src/RestFetch.Extensions/RestFetch.Extensions.csproj --no-build
 
       - name: Publish Extensions
         if: steps.changes.outputs.Extensions == 'true'
@@ -123,7 +123,7 @@ jobs:
 
       - name: Pack Core
         if: steps.changes.outputs.Core == 'true'
-        run: dotnet pack src/RestFetch.Core/RestFetch.Core.csproj --include-symbols --no-build
+        run: dotnet pack src/RestFetch.Core/RestFetch.Core.csproj --no-build
 
       - name: Publish Core
         if: steps.changes.outputs.Core == 'true'

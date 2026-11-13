@@ -52,48 +52,48 @@ public sealed record ApiDefinitionMethodInfo(
 		{ $"{RestFetchSourceGenerator.RestFetchNamespaceName}.TraceAttribute", "global::System.Net.Http.HttpMethod.Trace"  },
 	};
 	private static readonly DiagnosticDescriptor HeaderRule0 = new("RestFetch0030",
-		"错误的Metadata构造函数",
-		@"静态Metadata必须使用双参数构造函数.eg.[Metadata(""key"", ""value"")]",
+		"Invalid metadata attribute constructor",
+		@"Static metadata must use the two-argument constructor, e.g. [Metadata(""key"", ""value"")].",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HookRule6 = new("RestFetch0026",
-		"错误的Response类型",
-		"Response<TDeserializer>中TDeserializer必须实现IResponseBodyDeserializer或IResponseBodyDeserializer<TResponse>",
+		"Invalid response deserializer type",
+		"The type argument for Response<TDeserializer> must implement IResponseBodyDeserializer or IResponseBodyDeserializer<TResponse>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HttpMethodRule0 = new("RestFetch0040",
-		"不允许多个HttpMethodAttribute修饰同一个方法",
-		"方法不能同时标记多个HTTP方法特性(如[Get],[Post]等",
+		"Multiple HTTP method attributes",
+		"A method cannot have more than one HTTP method attribute (e.g. [Get] or [Post]).",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HttpMethodRule1 = new("RestFetch0041",
-		"HTTP方法必须修饰partial方法定义或接口方法定义",
-		"HTTP方法必须修饰partial方法定义或接口方法定义",
+		"Invalid HTTP method attribute target",
+		"HTTP method attributes can only be applied to partial method declarations or interface methods.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor HttpMethodRule2 = new("RestFetch0042",
-		"方法必须有一个HttpMethodAttribute标记",
-		"方法必须有一个HttpMethodAttribute标记(如[Get],[Post]等",
+		"HTTP method attribute required",
+		"A request method must have an HTTP method attribute (e.g. [Get] or [Post]).",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor ReturnTypeRule0 = new("RestFetch0080",
-		"错误的返回类型",
-		"返回类型必须是Task/Task<T>/ValueTask/ValueTask<T>/IAsyncEnumerable<T>/IObservable<T>",
+		"Invalid return type",
+		"The return type must be Task, Task<T>, ValueTask, ValueTask<T>, IAsyncEnumerable<T>, or IObservable<T>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor ReturnTypeRule1 = new("RestFetch0081",
-		"不能同时存在多个[Response]或[Response<T>]",
-		"不能同时存在多个[Response]或[Response<T>]",
+		"Multiple response attributes",
+		"Only one [Response] or [Response<T>] attribute can be specified.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor ParameterRule17 = new("RestFetch0067",
-		"错误的Path格式",
-		"Path中的{}需要闭合",
+		"Invalid request path",
+		"Braces in the request path must be balanced.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	private static readonly DiagnosticDescriptor ParameterRule18 = new("RestFetch0068",
-		"错误的Path参数",
-		"Path中未找到{0}对应的参数",
+		"Unmatched path parameter",
+		"No parameter matching the path placeholder '{0}' was found.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 
 	public static ApiDefinitionMethodInfo CreateFromSymbol(IMethodSymbol symbol, KnownTypes knownTypes, ApiDefinitionTypeInfo apiDefinitionType) {

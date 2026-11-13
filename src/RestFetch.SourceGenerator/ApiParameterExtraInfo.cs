@@ -13,72 +13,72 @@ public record ApiParameterExtraInfo(
 	EquatableArray<DiagnosticInfo>? Diagnostics
 ) {
 	public static readonly DiagnosticDescriptor ParameterRule0 = new("RestFetch0050",
-		"多个HTTP Parameter Attribute",
-		@"[Body],[Body<TSerializer>],[Param],[param<TSerializer>],[Metadata],[Query],[Query<TSerializer>],[Header]中只能同时存在最多一个",
+		"Multiple parameter attributes",
+		@"A parameter can have at most one of [Body], [Body<TSerializer>], [Param], [Param<TSerializer>], [Metadata], [Query], [Query<TSerializer>], or [Header].",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule1 = new("RestFetch0051",
-		"未知的参数类型",
-		@"参数必须被[Body],[Body<TSerializer>],[Param],[param<TSerializer>],[Metadata],[Query],[Query<TSerializer>],[Header]中的一个修饰,或为Cancellation",
+		"Unrecognized parameter type",
+		@"A request parameter must be annotated with [Body], [Body<TSerializer>], [Param], [Param<TSerializer>], [Metadata], [Query], [Query<TSerializer>], or [Header], or be a CancellationToken.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule2 = new("RestFetch0052",
-		"错误的请求body序列化器",
-		@"{0}必须实现IRequestBodySerializer或IRequestBodySerializer<TRequestBodyContent>或IRequestBodySerializer<TRequestBody, TRequestBodyContent>",
+		"Invalid request body serializer",
+		@"{0} must implement IRequestBodySerializer, IRequestBodySerializer<TRequestBodyContent>, or IRequestBodySerializer<TRequestBody, TRequestBodyContent>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule3 = new("RestFetch0053",
-		"错误的请求param序列化器",
-		@"{0}必须实现IParamEncodeSerializer<in TValue, out TReturn>",
+		"Invalid path parameter serializer",
+		@"{0} must implement IParamEncodeSerializer<TValue, TReturn>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule4 = new("RestFetch0054",
-		"错误的请求param序列化器",
-		@"{0}必须实现IParamSerializer<in TValue, out TReturn>或IParamEncodeSerializer<in TValue, out TReturn>",
+		"Invalid path parameter serializer",
+		@"{0} must implement IParamSerializer<TValue, TReturn> or IParamEncodeSerializer<TValue, TReturn>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule5 = new("RestFetch0055",
-		"错误的Metadata参数",
-		@"动态Metadata参数只能使用[Metadata]或[Metadata(""key"")]",
+		"Invalid metadata parameter",
+		@"Dynamic metadata parameters can only use [Metadata] or [Metadata(""key"")].",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule6 = new("RestFetch0056",
-		"错误的请求param参数",
-		@"[Param]/[Param<T>]必须修饰非nullable参数",
+		"Invalid path parameter",
+		@"[Param] and [Param<T>] can only be applied to non-nullable parameters.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule7 = new("RestFetch0057",
-		"错误的请求querystring序列化器",
-		@"{0}必须实现IAliasQueryStringSerializer<T>",
+		"Invalid query string serializer",
+		@"{0} must implement IAliasQueryStringSerializer<T>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule8 = new("RestFetch0058",
-		"错误的请求querystring序列化器",
-		@"{0}必须实现IQueryStringSerializer或IQueryStringSerializer<T>或IAliasQueryStringSerializer<T>",
+		"Invalid query string serializer",
+		@"{0} must implement IQueryStringSerializer, IQueryStringSerializer<T>, or IAliasQueryStringSerializer<T>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule9 = new("RestFetch0059",
-		"错误的请求header参数",
-		@"动态header必须使用[Header]或[Header(""name"")]而不是[Header(""name"", ""value"")]",
+		"Invalid header parameter",
+		@"Dynamic headers must use [Header] or [Header(""name"")], not [Header(""name"", ""value"")].",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule10 = new("RestFetch0060",
-		"错误的请求header参数",
-		@"[Header(""name"")]只能修饰string类型的参数",
+		"Invalid header parameter",
+		@"[Header(""name"")] can only be applied to string parameters.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule11 = new("RestFetch0061",
-		"错误的请求header参数",
-		@"[Header]只能修饰IEnumerable<KeyValuePair<string, string>>类型的参数",
+		"Invalid header parameter",
+		@"[Header] can only be applied to parameters of type IEnumerable<KeyValuePair<string, string>>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule12 = new("RestFetch0062",
-		"未知错误",
-		"不存在的参数类型",
+		"Unknown parameter kind",
+		"The parameter type is not recognized.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule13 = new("RestFetch0063",
-		"错误的body参数",
-		"不允许同时存在多个[Body]/[Body<T>]修饰的参数",
+		"Multiple body parameters",
+		"A request method cannot have more than one parameter annotated with [Body] or [Body<T>].",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule14 = new("RestFetch0064",
-		"错误的QueryString参数类型",
-		"默认QueryString序列化器仅支持QueryString,FastQueryString,以及基本类型及其IEnumerable<primitive>或IEnumerable<KeyValuePair<string, primitive>>",
+		"Unsupported query string parameter type",
+		"The default query string serializer only supports QueryString, FastQueryString, primitive types, IEnumerable<primitive>, and IEnumerable<KeyValuePair<string, primitive>>.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule15 = new("RestFetch0065",
-		"Cancellation参数不能为null",
-		"Cancellation参数不能为null",
+		"Nullable CancellationToken",
+		"A CancellationToken parameter cannot be nullable.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	public static readonly DiagnosticDescriptor ParameterRule16 = new("RestFetch0066",
-		"错误的JsonSerializerContext类型",
-		"{0}必须继承System.Text.Json.Serialization.JsonSerializerContext",
+		"Invalid JsonSerializerContext type",
+		"{0} must derive from System.Text.Json.Serialization.JsonSerializerContext.",
 		"SourceGenerator", DiagnosticSeverity.Error, true);
 	// public static readonly Dictionary<string, ApiParameterKind> ParamAttrsMap = new() {
 	// 	{ "None", ApiParameterKind.None },
