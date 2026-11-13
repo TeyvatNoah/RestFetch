@@ -15,9 +15,9 @@ namespace RestFetch;
 	AllowMultiple = false
 	)]
 internal sealed class TimeoutAttribute: Attribute {
-	public int AttemptTimeout;
+	public int AttemptTimeout = 3;
 
-	public int TotalTimeout;
+	public int TotalTimeout = 10;
 
 	// 用于取消父级配置
 	public bool Ignore = false;
