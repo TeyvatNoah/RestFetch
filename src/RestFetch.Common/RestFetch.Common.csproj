@@ -4,7 +4,7 @@
   <PropertyGroup>
     <!-- 包信息 -->
 		<PackageId>RestFetch.Common</PackageId>
-		<Version>0.2.10</Version>
+		<Version>0.2.11</Version>
 		<!-- <PackageIcon>TODO</PackageIcon> -->
 		<Title>RestFetch.Common</Title>
 		<!-- 项目类型,DotnetTool,Dependency -->

@@ -4,7 +4,7 @@
   <PropertyGroup>
     <!-- 包信息 -->
 		<PackageId>RestFetch.Core</PackageId>
-		<Version>0.2.10</Version>
+		<Version>0.2.11</Version>
 		<!-- <PackageIcon>TODO</PackageIcon> -->
 		<Title>RestFetch</Title>
 		<!-- 项目类型,DotnetTool,Dependency -->
@@ -32,8 +32,8 @@
     <TransformOutOfDateOnly>True</TransformOutOfDateOnly> -->
 
 		<!-- 用来收集源生成器输出目录的dll给nuget pack使用 -->
-		<SgOutputDir>../RestFetch.SourceGenerator/bin/$(Configuration)/netstandard2.0</SgOutputDir>
-		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_PackSourceGeneratorDlls</TargetsForTfmSpecificContentInPackage>
+		<!-- <SgOutputDir>../RestFetch.SourceGenerator/bin/$(Configuration)/netstandard2.0</SgOutputDir>
+		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_PackSourceGeneratorDlls</TargetsForTfmSpecificContentInPackage> -->
 
     <NoWarn>$(NoWarn);CS8387</NoWarn>
   </PropertyGroup>
@@ -84,15 +84,15 @@
 		<PackageReference Include="ZString" />
 	</ItemGroup>
 	<!-- 给nuget pack收集源生成器的dll及其依赖项dll并打包到analyzers/dotnet/cs -->
-	<Target Name="_PackSourceGeneratorDlls">
+	<!-- <Target Name="_PackSourceGeneratorDlls">
 		<ItemGroup>
 			<TfmSpecificPackageFile Include="$(SgOutputDir)/*.dll" PackagePath="analyzers/dotnet/cs" />
 		</ItemGroup>
-	</Target>
+	</Target> -->
 	<!-- 给本地monorepo开发传递pkg -->
-	<Target Name="AddSourceGeneratorAsAnalyzerToReferencingProjects" BeforeTargets="GetTargetPath">
+	<!-- <Target Name="AddSourceGeneratorAsAnalyzerToReferencingProjects" BeforeTargets="GetTargetPath">
 		<ItemGroup>
 			<TargetPathWithTargetPlatformMoniker Include="$(SgOutputDir)/*.dll" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		</ItemGroup>
-	</Target>
+	</Target> -->
 </Project>
